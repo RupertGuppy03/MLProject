@@ -3,6 +3,19 @@ from __future__ import annotations
 import pandas as pd
 
 
+def _require_columns(
+    df: pd.DataFrame, required_columns: list[str], func_name: str
+) -> None:
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"{func_name}: missing columns: {missing}")
+
+
+def _validate_window_size(window_size: int, func_name: str) -> None:
+    if window_size < 1:
+        raise ValueError(f"{func_name}: window_size must be >= 1")
+
+
 def build_team_match_history(matches: pd.DataFrame) -> pd.DataFrame:
     """Expected input columns:
         - match_id
@@ -33,9 +46,7 @@ def build_team_match_history(matches: pd.DataFrame) -> pd.DataFrame:
         "home_goals",
         "away_goals",
     ]
-    missing = [col for col in required_columns if col not in matches.columns]
-    if missing:
-        raise ValueError(f"Missing columns: {missing}")
+    _require_columns(matches, required_columns, "build_team_match_history")
 
     df = matches.copy()
 
@@ -79,6 +90,15 @@ def build_team_match_history(matches: pd.DataFrame) -> pd.DataFrame:
     history["draw"] = (history["goals_for"] == history["goals_against"]).astype(int)
     history["loss"] = (history["goals_for"] < history["goals_against"]).astype(int)
 
+    # points earned in the match (3 for win, 1 for draw, 0 for loss)
+    history["points"] = history["win"] * 3 + history["draw"] * 1
+
+    # goal difference in the match
+    history["goal_difference"] = history["goals_for"] - history["goals_against"]
+
+    # clean sheet flag
+    history["clean_sheet"] = (history["goals_against"] == 0).astype(int)
+
     # final ordering of columns
     history = history.sort_values(
         ["date", "match_id", "is_home"], ascending=[True, True, False]
@@ -86,22 +106,31 @@ def build_team_match_history(matches: pd.DataFrame) -> pd.DataFrame:
 
     return history
 
-def add_rolling_features(history: pd.DataFrame, window_size: int = 5,) -> pd.DataFrame:
-    
-    
+
+def add_rolling_features(
+    history: pd.DataFrame,
+    window_size: int = 5,
+) -> pd.DataFrame:
     """
     Rolling features are computed using only PRIOR matches:
     - current match is excluded via shift(1)
     - only last `window_size` prior matches are used
     """
-    
+
     df = history.copy()
-    
-    #ensure correct orderting before rolling calculations
+
+    _validate_window_size(window_size, "add_rolling_features")
+    _require_columns(
+        df,
+        ["team", "date", "match_id", "is_home", "win", "goals_for", "goals_against"],
+        "add_rolling_features",
+    )
+
+    # ensure correct orderting before rolling calculations
     df = df.sort_values(["team", "date", "match_id"]).reset_index(drop=True)
-    
+
     grouped = df.groupby("team", group_keys=False)
-    
+
     # Exclude current match and use only last `window` matches for rolling calculations
     df["rolling_win_rate"] = grouped["win"].transform(
         lambda s: s.shift(1).rolling(window=window_size, min_periods=1).mean()
@@ -114,15 +143,66 @@ def add_rolling_features(history: pd.DataFrame, window_size: int = 5,) -> pd.Dat
     df["rolling_goals_against_avg"] = grouped["goals_against"].transform(
         lambda s: s.shift(1).rolling(window=window_size, min_periods=1).mean()
     )
-    
-    #restore original order
+
+    # restore original order
     df = df.sort_values(["date", "match_id", "is_home"], ascending=[True, True, False])
     df = df.reset_index(drop=True)
-    
+
     return df
 
+
+def add_extended_rolling_features(
+    history: pd.DataFrame, window_size: int = 5
+) -> pd.DataFrame:
+    """
+    Add extended rolling features per team:
+    - rolling points per game
+    - rolling goal difference per game
+    - rolling clean sheet rate
+
+    These are computed using only PRIOR matches, similar to add_rolling_features.
+    """
+
+    df = history.copy()
+
+    _validate_window_size(window_size, "add_extended_rolling_features")
+    _require_columns(
+        df,
+        [
+            "team",
+            "date",
+            "match_id",
+            "is_home",
+            "points",
+            "goal_difference",
+            "clean_sheet",
+        ],
+        "add_extended_rolling_features",
+    )
+
+    df = df.sort_values(["team", "date", "match_id"]).reset_index(drop=True)
+
+    grouped = df.groupby("team", group_keys=False)
+
+    df["rolling_points_per_game"] = grouped["points"].transform(
+        lambda s: s.shift(1).rolling(window=window_size, min_periods=1).mean()
+    )
+
+    df["rolling_goal_difference_per_game"] = grouped["goal_difference"].transform(
+        lambda s: s.shift(1).rolling(window=window_size, min_periods=1).mean()
+    )
+
+    df["rolling_clean_sheet_rate"] = grouped["clean_sheet"].transform(
+        lambda s: s.shift(1).rolling(window=window_size, min_periods=1).mean()
+    )
+
+    df = df.sort_values(["date", "match_id", "is_home"], ascending=[True, True, False])
+    df = df.reset_index(drop=True)
+
+    return df
+
+
 def add_venue_splits(history: pd.DataFrame, window_size: int = 5) -> pd.DataFrame:
-    
     """
     Add leakage-safe venue-split rolling features per team.
 
@@ -132,62 +212,107 @@ def add_venue_splits(history: pd.DataFrame, window_size: int = 5) -> pd.DataFram
 
     Current match is excluded.
     """
-    
+
     df = history.copy()
-    
+
+    _validate_window_size(window_size, "add_venue_splits")
+    _require_columns(
+        df,
+        ["team", "date", "match_id", "is_home", "win", "goals_for", "goals_against"],
+        "add_venue_splits",
+    )
+
     # stable ordering for rolling calculations
     df = df.sort_values(["team", "date", "match_id"]).reset_index(drop=True)
-    
-    # doing the calculations separately for home and away matches to avoid leakage
-    def compute_split(series_df: pd.DataFrame, home_flag: int) -> pd.Series:
+
+    # Compute venue-specific rolling means from prior matches at that venue only.
+    def compute_split(
+        series_df: pd.DataFrame, metric_col: str, home_flag: int
+    ) -> pd.Series:
         mask = series_df["is_home"] == home_flag
-        values = series_df["win"].where(mask)
-        
-        return values.shift(1).rolling(window=window_size, min_periods=1).mean()
-    
+        venue_values = series_df.loc[mask, metric_col]
+
+        venue_rolling = (
+            venue_values.shift(1).rolling(window=window_size, min_periods=1).mean()
+        )
+
+        split_feature = pd.Series(index=series_df.index, dtype="float64")
+        split_feature.loc[mask] = venue_rolling
+
+        # Carry the latest known venue form forward to later rows for the team.
+        return split_feature.ffill()
+
+    # win rate splits for home and away matches
     df["rolling_win_rate_home"] = (
         df.groupby("team", group_keys=False)
-        .apply(lambda g: compute_split(g, home_flag=1))
+        .apply(lambda g: compute_split(g, "win", home_flag=1))
         .reset_index(level=0, drop=True)
     )
 
     df["rolling_win_rate_away"] = (
         df.groupby("team", group_keys=False)
-        .apply(lambda g: compute_split(g, home_flag=0))
+        .apply(lambda g: compute_split(g, "win", home_flag=0))
         .reset_index(level=0, drop=True)
     )
-    
+    # goals scored splits for home and away matches
+    df["rolling_goals_for_home"] = (
+        df.groupby("team", group_keys=False)
+        .apply(lambda g: compute_split(g, "goals_for", home_flag=1))
+        .reset_index(level=0, drop=True)
+    )
+    df["rolling_goals_for_away"] = (
+        df.groupby("team", group_keys=False)
+        .apply(lambda g: compute_split(g, "goals_for", home_flag=0))
+        .reset_index(level=0, drop=True)
+    )
+
+    # goals conceded splits for home and away matches
+    df["rolling_goals_against_home"] = (
+        df.groupby("team", group_keys=False)
+        .apply(lambda g: compute_split(g, "goals_against", home_flag=1))
+        .reset_index(level=0, drop=True)
+    )
+    df["rolling_goals_against_away"] = (
+        df.groupby("team", group_keys=False)
+        .apply(lambda g: compute_split(g, "goals_against", home_flag=0))
+        .reset_index(level=0, drop=True)
+    )
+
     # restore original order
     df = df.sort_values(["date", "match_id", "is_home"], ascending=[True, True, False])
     df = df.reset_index(drop=True)
-    
+
     return df
-    
+
+
 def add_days_rest(history: pd.DataFrame) -> pd.DataFrame:
-    
     """
     Add leakage-safe days_rest per team.
 
     days_rest = number of days since the team's previous match.
     First match for a team will have NaN for now.
     """
-    
+
     df = history.copy()
-    
+
+    _require_columns(df, ["team", "date", "match_id", "is_home"], "add_days_rest")
+
     df = df.sort_values(["team", "date", "match_id"]).reset_index(drop=True)
-    
+
     df["prev_match_date"] = df.groupby("team")["date"].shift(1)
     df["days_rest"] = (df["date"] - df["prev_match_date"]).dt.days
-    
+
     df = df.drop(columns=["prev_match_date"])
-    
-    df = df.sort_values(["date", "match_id", "is_home"], ascending=[True, True, False]).reset_index(drop=True)
+
+    df = df.sort_values(
+        ["date", "match_id", "is_home"], ascending=[True, True, False]
+    ).reset_index(drop=True)
     df = df.reset_index(drop=True)
-    
+
     return df
 
 
-def add_new_team_impution(history: pd.DataFrame) -> pd.DataFrame:
+def add_new_team_imputation(history: pd.DataFrame) -> pd.DataFrame:
     """
     Apply promoted/new-team imputation policy.
 
@@ -195,28 +320,41 @@ def add_new_team_impution(history: pd.DataFrame) -> pd.DataFrame:
     - Fill rolling numeric NaNs with league-average for that column
     - Fill days_rest NaN with 7
     """
-    
+
     df = history.copy()
-    
+
+    _require_columns(df, ["days_rest"], "add_new_team_imputation")
+
     rolling_numeric_cols = [
-        "rolling_win_rate",
-        "rolling_goals_for_avg",
-        "rolling_goals_against_avg",
-        "rolling_win_rate_home",
-        "rolling_win_rate_away",
+        col
+        for col in df.columns
+        if col.startswith("rolling_") and pd.api.types.is_numeric_dtype(df[col])
     ]
-    
-    # a team is new if this row has no prior match 
+
+    default_fill_values = {
+        "rolling_win_rate": 0.5,
+        "rolling_win_rate_home": 0.5,
+        "rolling_win_rate_away": 0.5,
+        "rolling_clean_sheet_rate": 0.3,
+    }
+
+    # a team is new if this row has no prior match
     df["is_new_team"] = df["days_rest"].isna().astype(int)
     # fill rolling numeric features with league average for that column
     for col in rolling_numeric_cols:
         league_avg = df[col].mean()
-        df[col] = df[col].fillna(league_avg)
-        
-        #fill missing days_rest with 7(assumption)
-    df["days_rest"] = df["days_rest"].fillna(7)        
-                     
+        fill_value = (
+            default_fill_values.get(col, 0.0)
+            if pd.isna(league_avg)
+            else float(league_avg)
+        )
+        df[col] = df[col].fillna(fill_value)
+
+        # fill missing days_rest with 7(assumption)
+    df["days_rest"] = df["days_rest"].fillna(7)
+
     return df
+
 
 def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
     """
@@ -224,6 +362,32 @@ def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
     with separate home_ and away_ feature columns.
     """
     df = history.copy()
+
+    _require_columns(
+        df,
+        [
+            "match_id",
+            "date",
+            "team",
+            "opponent",
+            "is_home",
+            "rolling_win_rate",
+            "rolling_goals_for_avg",
+            "rolling_goals_against_avg",
+            "rolling_win_rate_home",
+            "rolling_win_rate_away",
+            "rolling_goals_for_home",
+            "rolling_goals_for_away",
+            "rolling_goals_against_home",
+            "rolling_goals_against_away",
+            "rolling_points_per_game",
+            "rolling_goal_difference_per_game",
+            "rolling_clean_sheet_rate",
+            "days_rest",
+            "is_new_team",
+        ],
+        "build_match_level_features",
+    )
 
     feature_cols = [
         "match_id",
@@ -236,6 +400,13 @@ def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
         "rolling_goals_against_avg",
         "rolling_win_rate_home",
         "rolling_win_rate_away",
+        "rolling_goals_for_home",
+        "rolling_goals_for_away",
+        "rolling_goals_against_home",
+        "rolling_goals_against_away",
+        "rolling_points_per_game",
+        "rolling_goal_difference_per_game",
+        "rolling_clean_sheet_rate",
         "days_rest",
         "is_new_team",
     ]
@@ -254,6 +425,13 @@ def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
             "rolling_goals_against_avg": "home_rolling_goals_against_avg",
             "rolling_win_rate_home": "home_rolling_win_rate_home",
             "rolling_win_rate_away": "home_rolling_win_rate_away",
+            "rolling_goals_for_home": "home_rolling_goals_for_home",
+            "rolling_goals_for_away": "home_rolling_goals_for_away",
+            "rolling_goals_against_home": "home_rolling_goals_against_home",
+            "rolling_goals_against_away": "home_rolling_goals_against_away",
+            "rolling_points_per_game": "home_rolling_points_per_game",
+            "rolling_goal_difference_per_game": "home_rolling_goal_difference_per_game",
+            "rolling_clean_sheet_rate": "home_rolling_clean_sheet_rate",
             "days_rest": "home_days_rest",
             "is_new_team": "home_is_new_team",
         }
@@ -268,6 +446,13 @@ def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
             "rolling_goals_against_avg": "away_rolling_goals_against_avg",
             "rolling_win_rate_home": "away_rolling_win_rate_home",
             "rolling_win_rate_away": "away_rolling_win_rate_away",
+            "rolling_goals_for_home": "away_rolling_goals_for_home",
+            "rolling_goals_for_away": "away_rolling_goals_for_away",
+            "rolling_goals_against_home": "away_rolling_goals_against_home",
+            "rolling_goals_against_away": "away_rolling_goals_against_away",
+            "rolling_points_per_game": "away_rolling_points_per_game",
+            "rolling_goal_difference_per_game": "away_rolling_goal_difference_per_game",
+            "rolling_clean_sheet_rate": "away_rolling_clean_sheet_rate",
             "days_rest": "away_days_rest",
             "is_new_team": "away_is_new_team",
         }
@@ -283,28 +468,57 @@ def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
         "home_rolling_goals_against_avg",
         "home_rolling_win_rate_home",
         "home_rolling_win_rate_away",
+        "home_rolling_goals_for_home",
+        "home_rolling_goals_for_away",
+        "home_rolling_goals_against_home",
+        "home_rolling_goals_against_away",
+        "home_rolling_points_per_game",
+        "home_rolling_goal_difference_per_game",
+        "home_rolling_clean_sheet_rate",
         "home_days_rest",
         "home_is_new_team",
     ]
 
     away_keep = [
         "match_id",
+        "home_team",
+        "away_team",
         "away_rolling_win_rate",
         "away_rolling_goals_for_avg",
         "away_rolling_goals_against_avg",
         "away_rolling_win_rate_home",
         "away_rolling_win_rate_away",
+        "away_rolling_goals_for_home",
+        "away_rolling_goals_for_away",
+        "away_rolling_goals_against_home",
+        "away_rolling_goals_against_away",
+        "away_rolling_points_per_game",
+        "away_rolling_goal_difference_per_game",
+        "away_rolling_clean_sheet_rate",
         "away_days_rest",
         "away_is_new_team",
     ]
 
+    merge_keys = ["match_id", "home_team", "away_team"]
+
+    if home_df[merge_keys].duplicated().any():
+        raise ValueError(
+            "build_match_level_features: duplicate home rows for merge keys"
+        )
+    if away_df[merge_keys].duplicated().any():
+        raise ValueError(
+            "build_match_level_features: duplicate away rows for merge keys"
+        )
+
     match_features = home_df[home_keep].merge(
         away_df[away_keep],
-        on="match_id",
+        on=merge_keys,
         how="inner",
     )
 
-    match_features = match_features.sort_values(["date", "match_id"]).reset_index(drop=True)
+    match_features = match_features.sort_values(["date", "match_id"]).reset_index(
+        drop=True
+    )
     return match_features
 
 
@@ -323,8 +537,9 @@ if __name__ == "__main__":
     history = build_team_match_history(sample)
     history = add_rolling_features(history, window_size=2)
     history = add_venue_splits(history, window_size=2)
+    history = add_extended_rolling_features(history)
     history = add_days_rest(history)
-    history = add_new_team_impution(history)
+    history = add_new_team_imputation(history)
 
     match_features = build_match_level_features(history)
 
