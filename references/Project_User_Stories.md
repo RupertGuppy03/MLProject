@@ -16,7 +16,7 @@
 
 ## Implement sequential Elo features (pre-match only)
 
-**Labels:** Must Have, Sprint 1
+**Labels:** Must Have, Sprint 1 — **DONE**
 
 **User Story:**
 As a user, I want Elo ratings updated sequentially so the model has a robust strength signal that is naturally leakage-safe.
@@ -82,7 +82,7 @@ As a user, I want a consistent `(X, y, meta)` output so modeling and backtesting
 
 ## League position rolling feature
 
-**Labels:** Should Have, Sprint 1
+**Labels:** Should Have, Sprint 1 — **DONE**
 
 **User Story:**
 As a developer, I want a rolling league position feature computed from season-start so the model has a dynamic strength signal that updates after every match.
