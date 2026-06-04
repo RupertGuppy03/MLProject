@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PL Fixture Intelligence</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#030712;color:white;font-family:Georgia,serif;padding:24px}
+  h1{font-size:36px;font-weight:700;letter-spacing:-0.02em;text-align:center}
+  .subtitle{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:#4b5563;text-align:center;margin-bottom:6px}
+  .sub2{font-size:12px;color:#4b5563;text-align:center;margin-top:4px;margin-bottom:32px}
+  .card{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:20px;margin-bottom:18px}
+  .lbl{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#6b7280;margin-bottom:12px;font-weight:600}
+  .selector-row{display:flex;align-items:center;justify-content:center;gap:28px;flex-wrap:wrap}
+  .sel-group{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .sel-group label{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#6b7280}
+  select{background:#1f2937;border:1px solid #374151;color:white;border-radius:12px;padding:8px 18px;font-size:15px;outline:none;cursor:pointer;font-family:Georgia,serif}
+  .vs{font-size:26px;font-weight:700;color:#374151}
+  #runBtn{background:linear-gradient(135deg,#22c55e,#15803d);color:white;border:none;border-radius:12px;padding:11px 32px;font-size:12px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;font-family:Georgia,serif}
+  .prob-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:18px}
+  .prob-card{background:#111827;border:1px solid #1f2937;border-radius:16px;padding:20px;text-align:center;position:relative;overflow:hidden}
+  .prob-glow{position:absolute;inset:0;border-radius:16px}
+  .prob-label{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+  .prob-val{font-size:52px;font-weight:700;line-height:1}
+  .prob-name{font-size:11px;color:#6b7280;margin:6px 0 14px}
+  .prob-bar-bg{height:4px;background:#1f2937;border-radius:4px;overflow:hidden}
+  .prob-bar-fill{height:100%;border-radius:4px;transition:width 0.8s ease}
+  .prob-odds{font-size:11px;color:#4b5563;margin-top:8px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+  .form-row{display:flex;gap:8px;margin-bottom:12px}
+  .form-chip{flex:1;border-radius:8px;padding:10px 0;text-align:center;font-weight:700;font-size:15px}
+  .form-meta{display:flex;justify-content:space-between;font-size:11px;color:#6b7280}
+  .form-meta strong{color:white}
+  .h2h-row{display:flex;align-items:center;gap:16px}
+  .h2h-num{text-align:center;min-width:70px}
+  .h2h-num .big{font-size:40px;font-weight:700}
+  .h2h-num .small{font-size:10px;color:#6b7280;margin-top:2px}
+  .h2h-bar{flex:1;height:10px;background:#1f2937;border-radius:6px;overflow:hidden;display:flex}
+  .conf-row{display:flex;align-items:center;gap:20px}
+  .conf-bar-bg{height:10px;background:#1f2937;border-radius:6px;overflow:hidden;margin:6px 0 10px}
+  .conf-bar-fill{height:100%;border-radius:6px;transition:width 0.8s ease;background:linear-gradient(90deg,#eab308,#22c55e)}
+  .conf-labels{display:flex;justify-content:space-between;font-size:10px;color:#6b7280}
+  .conf-text{font-size:11px;color:#6b7280}
+  .conf-big{font-size:40px;font-weight:700}
+  .hidden{display:none}
+  #wrap{max-width:920px;margin:0 auto}
+  .legend{display:flex;gap:24px;justify-content:center;margin-top:10px;font-size:11px;color:#9ca3af}
+  .legend-dot{display:inline-block;width:20px;height:2px;vertical-align:middle;margin-right:6px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <p class="subtitle">Premier League · Match Predictor</p>
+  <h1>Fixture Intelligence</h1>
+  <p class="sub2">Engineered from Football-Data.org · Mock Data</p>
+
+  <div class="card">
+    <div class="selector-row">
+      <div class="sel-group"><label>Home</label><select id="homeSelect"></select></div>
+      <div class="vs">VS</div>
+      <div class="sel-group"><label>Away</label><select id="awaySelect"></select></div>
+      <button id="runBtn" onclick="runPrediction()">Run Prediction</button>
+    </div>
+  </div>
+
+  <div class="prob-grid hidden" id="probSection">
+    <div class="prob-card"><div class="prob-glow" id="pg-home"></div><div class="prob-label">Home Win</div><div class="prob-val" id="pv-home"></div><div class="prob-name" id="pn-home"></div><div class="prob-bar-bg"><div class="prob-bar-fill" id="pb-home"></div></div><div class="prob-odds" id="po-home"></div></div>
+    <div class="prob-card"><div class="prob-glow" id="pg-draw"></div><div class="prob-label">Draw</div><div class="prob-val" id="pv-draw" style="color:#eab308"></div><div class="prob-name">—</div><div class="prob-bar-bg"><div class="prob-bar-fill" id="pb-draw" style="background:#eab308"></div></div><div class="prob-odds" id="po-draw"></div></div>
+    <div class="prob-card"><div class="prob-glow" id="pg-away"></div><div class="prob-label">Away Win</div><div class="prob-val" id="pv-away"></div><div class="prob-name" id="pn-away"></div><div class="prob-bar-bg"><div class="prob-bar-fill" id="pb-away"></div></div><div class="prob-odds" id="po-away"></div></div>
+  </div>
+
+  <div id="mainContent" class="hidden">
+    <div class="two-col" id="formSection"></div>
+
+    <div class="card">
+      <div class="lbl">Elo Rating Trajectory — Last 10 Gameweeks</div>
+      <svg id="eloChart" width="100%" viewBox="0 0 860 170" style="overflow:visible"></svg>
+      <div class="legend" id="eloLegend"></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Goals Scored vs Conceded — Rolling 5-Match Avg</div>
+      <svg id="goalChart" width="100%" viewBox="0 0 860 170" style="overflow:visible"></svg>
+      <div class="legend" id="goalLegend"></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card"><div class="lbl">Home / Away Splits</div><svg id="splitChart" width="100%" viewBox="0 0 400 200"></svg></div>
+      <div class="card"><div class="lbl">Team Profile Radar</div><svg id="radarChart" width="100%" viewBox="0 0 400 200"></svg></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Head-to-Head Record</div>
+      <div class="h2h-row" id="h2hRow"></div>
+    </div>
+
+    <div class="card hidden" id="confCard">
+      <div class="lbl">Model Confidence</div>
+      <div class="conf-row">
+        <div style="flex:1">
+          <div class="conf-labels"><span>Uncertain</span><span>Confident</span></div>
+          <div class="conf-bar-bg"><div class="conf-bar-fill" id="confBar"></div></div>
+          <div class="conf-text" id="confText"></div>
+        </div>
+        <div class="conf-big" id="confBig"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TEAMS={
+  "Arsenal":    {color:"#EF0107",elo:[1612,1618,1609,1624,1631,1628,1640,1655,1648,1661],form:["W","W","D","W","L"],hgf:2.1,hga:0.8,agf:1.6,aga:1.1,cs:8, ppg:2.1,pos:2, h2h:{w:3,d:2,l:5},rg:[2.4,2.1,1.8,2.3,2.0,2.1,1.9,2.3,2.5,2.2],rc:[0.9,1.1,0.8,0.7,1.0,0.8,0.6,0.9,0.7,0.8]},
+  "Man City":   {color:"#6CABDD",elo:[1720,1715,1728,1734,1722,1740,1738,1745,1752,1749],form:["W","W","W","D","W"],hgf:2.6,hga:0.6,agf:2.0,aga:0.9,cs:12,ppg:2.4,pos:1, h2h:{w:5,d:2,l:3},rg:[2.8,3.0,2.5,2.7,2.9,2.6,2.8,3.1,2.7,2.8],rc:[0.7,0.5,0.8,0.6,0.4,0.7,0.5,0.6,0.8,0.6]},
+  "Chelsea":    {color:"#034694",elo:[1580,1572,1588,1576,1590,1583,1595,1588,1601,1608],form:["D","W","L","W","D"],hgf:1.8,hga:1.2,agf:1.3,aga:1.4,cs:6, ppg:1.6,pos:6, h2h:{w:4,d:3,l:3},rg:[1.5,1.8,2.0,1.6,1.4,1.9,1.7,1.5,1.8,1.6],rc:[1.3,1.5,1.0,1.2,1.6,1.1,1.4,1.3,1.0,1.2]},
+  "Liverpool":  {color:"#C8102E",elo:[1700,1695,1708,1715,1710,1722,1718,1730,1725,1738],form:["W","D","W","W","W"],hgf:2.4,hga:0.7,agf:1.9,aga:1.0,cs:10,ppg:2.2,pos:3, h2h:{w:4,d:3,l:3},rg:[2.2,2.5,2.3,2.8,2.4,2.6,2.3,2.7,2.5,2.6],rc:[0.8,0.6,1.0,0.7,0.9,0.6,0.8,0.7,0.5,0.7]},
+  "Tottenham":  {color:"#132257",elo:[1555,1560,1548,1562,1570,1565,1558,1572,1568,1575],form:["L","W","D","L","W"],hgf:1.7,hga:1.3,agf:1.2,aga:1.5,cs:5, ppg:1.4,pos:8, h2h:{w:3,d:3,l:4},rg:[1.6,1.4,1.8,1.5,1.3,1.7,1.6,1.4,1.9,1.7],rc:[1.4,1.6,1.2,1.5,1.7,1.3,1.5,1.6,1.2,1.4]},
+  "Man Utd":    {color:"#DA291C",elo:[1540,1535,1548,1542,1550,1545,1538,1552,1548,1555],form:["D","L","W","D","L"],hgf:1.5,hga:1.4,agf:1.1,aga:1.6,cs:4, ppg:1.2,pos:10,h2h:{w:2,d:4,l:4},rg:[1.4,1.2,1.6,1.3,1.5,1.4,1.2,1.5,1.3,1.4],rc:[1.5,1.7,1.3,1.6,1.8,1.4,1.6,1.5,1.7,1.5]},
+  "Newcastle":  {color:"#41B6E6",elo:[1590,1598,1585,1602,1610,1605,1618,1612,1625,1620],form:["W","W","L","W","D"],hgf:2.0,hga:0.9,agf:1.5,aga:1.2,cs:9, ppg:1.9,pos:4, h2h:{w:3,d:2,l:5},rg:[1.8,2.0,1.7,2.1,1.9,2.0,1.8,2.2,2.0,1.9],rc:[1.0,0.8,1.2,0.9,1.1,0.8,1.0,0.9,0.7,0.9]},
+  "Aston Villa":{color:"#95BFE5",elo:[1570,1578,1565,1580,1588,1582,1595,1590,1602,1598],form:["D","W","W","L","W"],hgf:1.9,hga:1.0,agf:1.4,aga:1.3,cs:7, ppg:1.8,pos:5, h2h:{w:4,d:2,l:4},rg:[1.7,1.9,2.1,1.8,1.6,2.0,1.8,1.7,2.0,1.8],rc:[1.1,0.9,1.3,1.0,1.2,0.9,1.1,1.0,0.8,1.0]},
+};
+const GWS=["GW24","GW25","GW26","GW27","GW28","GW29","GW30","GW31","GW32","GW33"];
+const fC=r=>r==="W"?"#22c55e":r==="D"?"#eab308":"#ef4444";
+const fB=r=>r==="W"?"#14532d":r==="D"?"#713f12":"#450a0a";
+
+const hs=document.getElementById("homeSelect");
+const as=document.getElementById("awaySelect");
+Object.keys(TEAMS).forEach((t,i)=>{
+  hs.innerHTML+=`<option>${t}</option>`;
+  as.innerHTML+=`<option>${t}</option>`;
+});
+as.selectedIndex=1;
+
+function calcProbs(H,A){
+  const d=H.elo[9]-A.elo[9];
+  const raw=1/(1+Math.pow(10,-(d+60)/400));
+  const fh=H.form.reduce((a,r)=>a+(r==="W"?1:r==="D"?.4:0),0)/5;
+  const fa=A.form.reduce((a,r)=>a+(r==="W"?1:r==="D"?.4:0),0)/5;
+  const hw=Math.min(.82,Math.max(.18,raw+(fh-fa)*.08));
+  const dr=Math.min(.35,Math.max(.16,.28-Math.abs(d)*.0002));
+  const aw=Math.max(.08,1-hw-dr);
+  const t=hw+dr+aw;
+  return{home:Math.round(hw/t*100),draw:Math.round(dr/t*100),away:Math.round(aw/t*100)};
+}
+
+function lineChart(id,series,yMin,yMax){
+  const W=860,H=150,pL=44,pR=10,pT=8,pB=22,iW=W-pL-pR,iH=H-pT-pB;
+  const n=GWS.length,xs=iW/(n-1);
+  const ys=v=>pT+iH-((v-yMin)/(yMax-yMin))*iH;
+  let h="";
+  for(let i=0;i<=4;i++){const y=pT+(iH/4)*i;h+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#1f2937" stroke-dasharray="3,3"/>`;}
+  GWS.forEach((l,i)=>{const x=pL+i*xs;h+=`<text x="${x}" y="${H}" text-anchor="middle" fill="#6b7280" font-size="10">${l}</text>`;});
+  for(let i=0;i<=4;i++){const v=yMin+(yMax-yMin)*i/4,y=pT+iH-iH*i/4;h+=`<text x="${pL-5}" y="${y+4}" text-anchor="end" fill="#6b7280" font-size="10">${v.toFixed(1)}</text>`;}
+  series.forEach(({data,color,dash})=>{
+    const pts=data.map((v,i)=>`${pL+i*xs},${ys(v)}`).join(" ");
+    h+=`<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${dash?1.5:2.5}" ${dash?'stroke-dasharray="5,4" stroke-opacity="0.55"':''} stroke-linejoin="round"/>`;
+  });
+  document.getElementById(id).innerHTML=h;
+}
+
+function barChart(id,rows,k1,k2,c1,c2){
+  const W=400,H=200,pL=76,pR=10,pT=10,pB=10,iW=W-pL-pR,iH=H-pT-pB;
+  const n=rows.length,rH=iH/n,bH=rH*0.3;
+  const maxV=Math.max(...rows.flatMap(r=>[r[k1],r[k2]]))*1.15;
+  let h="";
+  rows.forEach((row,i)=>{
+    const y=pT+i*rH;
+    h+=`<text x="${pL-5}" y="${y+rH/2+4}" text-anchor="end" fill="#9ca3af" font-size="10">${row.label}</text>`;
+    h+=`<rect x="${pL}" y="${y+rH/2-bH-1}" width="${(row[k1]/maxV)*iW}" height="${bH}" fill="${c1}" rx="2"/>`;
+    h+=`<rect x="${pL}" y="${y+rH/2+1}" width="${(row[k2]/maxV)*iW}" height="${bH}" fill="${c2}" rx="2"/>`;
+    if(i>0)h+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#1f2937"/>`;
+  });
+  h+=`<line x1="${pL}" y1="${pT}" x2="${pL}" y2="${H-pB}" stroke="#374151"/>`;
+  document.getElementById(id).innerHTML=h;
+}
+
+function radar(id,axes,s1,s2,c1,c2){
+  const W=400,H=200,cx=200,cy=100,r=68,n=axes.length;
+  let h="";
+  [.33,.66,1].forEach(f=>{
+    const pts=axes.map((_,i)=>{const a=(i/n)*2*Math.PI-Math.PI/2;return`${cx+Math.cos(a)*r*f},${cy+Math.sin(a)*r*f}`;}).join(" ");
+    h+=`<polygon points="${pts}" fill="none" stroke="#1f2937"/>`;
+  });
+  axes.forEach((ax,i)=>{
+    const a=(i/n)*2*Math.PI-Math.PI/2;
+    h+=`<line x1="${cx}" y1="${cy}" x2="${cx+Math.cos(a)*r}" y2="${cy+Math.sin(a)*r}" stroke="#1f2937"/>`;
+    h+=`<text x="${cx+Math.cos(a)*(r+14)}" y="${cy+Math.sin(a)*(r+14)}" text-anchor="middle" dominant-baseline="middle" fill="#6b7280" font-size="9">${ax}</text>`;
+  });
+  [s1,s2].forEach(({vals,color})=>{
+    const pts=vals.map((v,i)=>{const a=(i/n)*2*Math.PI-Math.PI/2,f=Math.min(1,v/100);return`${cx+Math.cos(a)*r*f},${cy+Math.sin(a)*r*f}`;}).join(" ");
+    h+=`<polygon points="${pts}" fill="${color}" fill-opacity="0.15" stroke="${color}" stroke-width="2"/>`;
+  });
+  document.getElementById(id).innerHTML=h;
+}
+
+function runPrediction(){
+  const ht=hs.value,at=as.value;
+  if(ht===at){alert("Please select two different teams");return;}
+  const H=TEAMS[ht],A=TEAMS[at];
+  const probs=calcProbs(H,A);
+
+  document.getElementById("probSection").classList.remove("hidden");
+  const cfg=[{k:"home",val:probs.home,name:ht,color:H.color},{k:"draw",val:probs.draw,name:"—",color:"#eab308"},{k:"away",val:probs.away,name:at,color:A.color}];
+  cfg.forEach(({k,val,name,color})=>{
+    document.getElementById(`pv-${k}`).textContent=val+"%";
+    document.getElementById(`pv-${k}`).style.color=color;
+    document.getElementById(`pg-${k}`).style.background=`radial-gradient(circle,${color}22,transparent)`;
+    document.getElementById(`pb-${k}`).style.width=val+"%";
+    document.getElementById(`pb-${k}`).style.background=color;
+    document.getElementById(`po-${k}`).textContent=`Implied odds: ${(100/val).toFixed(2)}`;
+  });
+  document.getElementById("pn-home").textContent=ht;
+  document.getElementById("pn-away").textContent=at;
+
+  document.getElementById("mainContent").classList.remove("hidden");
+
+  document.getElementById("formSection").innerHTML=[{team:ht,data:H},{team:at,data:A}].map(({team,data})=>`
+    <div class="card" style="margin-bottom:0">
+      <div class="lbl">Last 5 · ${team}</div>
+      <div class="form-row">${data.form.map(r=>`<div class="form-chip" style="background:${fB(r)};color:${fC(r)}">${r}</div>`).join("")}</div>
+      <div class="form-meta"><span>PPG: <strong>${data.ppg}</strong></span><span>Position: <strong>#${data.pos}</strong></span><span>Clean Sheets: <strong>${data.cs}</strong></span></div>
+    </div>`).join("");
+
+  const eloMin=Math.min(...H.elo,...A.elo)-15,eloMax=Math.max(...H.elo,...A.elo)+15;
+  lineChart("eloChart",[{data:H.elo,color:H.color},{data:A.elo,color:A.color,dash:false}],eloMin,eloMax);
+  document.getElementById("eloLegend").innerHTML=`<span><span class="legend-dot" style="background:${H.color}"></span>${ht}: ${H.elo[9]}</span><span><span class="legend-dot" style="background:${A.color}"></span>${at}: ${A.elo[9]}</span>`;
+
+  const allG=[...H.rg,...H.rc,...A.rg,...A.rc];
+  lineChart("goalChart",[{data:H.rg,color:H.color},{data:H.rc,color:H.color,dash:true},{data:A.rg,color:A.color},{data:A.rc,color:A.color,dash:true}],0,Math.ceil(Math.max(...allG))+0.5);
+  document.getElementById("goalLegend").innerHTML=`<span><span class="legend-dot" style="background:${H.color}"></span>${ht} Scored</span><span><span class="legend-dot" style="background:${H.color};opacity:0.5"></span>${ht} Conceded</span><span><span class="legend-dot" style="background:${A.color}"></span>${at} Scored</span><span><span class="legend-dot" style="background:${A.color};opacity:0.5"></span>${at} Conceded</span>`;
+
+  barChart("splitChart",[{label:"Home Att",[ht]:H.hgf,[at]:A.hgf},{label:"Away Att",[ht]:H.agf,[at]:A.agf},{label:"Home Def",[ht]:H.hga,[at]:A.hga},{label:"Away Def",[ht]:H.aga,[at]:A.aga},{label:"PPG",[ht]:H.ppg,[at]:A.ppg}],ht,at,H.color,A.color);
+
+  radar("radarChart",["Attack","Defence","Form","Elo","Clean Sheets","H2H"],
+    {vals:[H.hgf*33,(2.5-H.hga)*50,H.ppg*33,(H.elo[9]-1500)/3,H.cs*6,H.h2h.w*10],color:H.color},
+    {vals:[A.hgf*33,(2.5-A.hga)*50,A.ppg*33,(A.elo[9]-1500)/3,A.cs*6,A.h2h.w*10],color:A.color});
+
+  document.getElementById("h2hRow").innerHTML=`
+    <div class="h2h-num"><div class="big" style="color:${H.color}">${H.h2h.w}</div><div class="small">${ht} Wins</div></div>
+    <div class="h2h-bar"><div style="width:${H.h2h.w/10*100}%;background:${H.color}"></div><div style="width:${H.h2h.d/10*100}%;background:#ca8a04"></div><div style="width:${H.h2h.l/10*100}%;background:${A.color}"></div></div>
+    <div class="h2h-num"><div class="big" style="color:#eab308">${H.h2h.d}</div><div class="small">Draws</div></div>
+    <div style="flex:1;height:10px;background:#1f2937;border-radius:6px"></div>
+    <div class="h2h-num"><div class="big" style="color:${A.color}">${A.h2h.w}</div><div class="small">${at} Wins</div></div>`;
+
+  const maxP=Math.max(probs.home,probs.draw,probs.away);
+  document.getElementById("confCard").classList.remove("hidden");
+  document.getElementById("confBar").style.width=maxP+"%";
+  document.getElementById("confBig").textContent=maxP+"%";
+  document.getElementById("confBig").style.color=maxP>55?"#22c55e":"#eab308";
+  document.getElementById("confText").textContent=maxP>55?`Model strongly favours ${maxP===probs.home?ht:maxP===probs.away?at:"a Draw"}`:"Closely contested — model sees high uncertainty in this fixture";
+}
+</script>
+</body>
+</html>

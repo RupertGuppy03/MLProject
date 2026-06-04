@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import pandas as pd
 
+# Mid-table default used for a team's first match of a season (no prior standings).
+DEFAULT_LEAGUE_POSITION = 10
+
 
 def _require_columns(
     df: pd.DataFrame, required_columns: list[str], func_name: str
@@ -520,6 +523,115 @@ def build_match_level_features(history: pd.DataFrame) -> pd.DataFrame:
         drop=True
     )
     return match_features
+
+
+def add_league_position(matches: pd.DataFrame) -> pd.DataFrame:
+    """
+    Add leakage-safe league position per match from season-start cumulative points.
+
+    For each match the position reflects the standings BEFORE that match is played
+    (current match excluded). Standings reset every season, and a team's first match
+    of a season defaults to mid-table (10th). Ranking ties are broken by
+    points -> goal difference -> goals scored (real Premier League order).
+
+    Expected input columns:
+        - match_id
+        - season
+        - date
+        - home_team
+        - away_team
+        - home_goals
+        - away_goals
+
+    Columns added:
+        - home_league_position
+        - away_league_position
+        - home_position_diff = away_league_position - home_league_position
+    """
+
+    df = matches.copy()
+
+    _require_columns(
+        df,
+        [
+            "match_id",
+            "season",
+            "date",
+            "home_team",
+            "away_team",
+            "home_goals",
+            "away_goals",
+        ],
+        "add_league_position",
+    )
+
+    df["date"] = pd.to_datetime(df["date"])
+
+    # Rank a single team among all teams currently in the standings.
+    # A team with no entry yet (its first match this season) defaults to mid-table.
+    def team_rank(standings: dict[str, tuple[int, int, int]], team: str) -> int:
+        if team not in standings:
+            return DEFAULT_LEAGUE_POSITION
+        team_key = standings[team]
+        # Higher (points, goal_diff, goals_for) ranks above via tuple comparison.
+        above = sum(
+            1
+            for other, other_key in standings.items()
+            if other != team and other_key > team_key
+        )
+        return 1 + above
+
+    home_positions: dict[str, int] = {}
+    away_positions: dict[str, int] = {}
+
+    # Standings are independent per season, so process one season at a time.
+    for _, season_df in df.groupby("season", sort=False):
+        # Chronological order within the season; current match excluded by snapshotting first.
+        season_df = season_df.sort_values(["date", "match_id"])
+
+        standings: dict[str, tuple[int, int, int]] = {}
+
+        for row in season_df.to_dict("records"):
+            match_id = row["match_id"]
+            home = str(row["home_team"])
+            away = str(row["away_team"])
+
+            # Snapshot pre-match positions before applying this result (no leakage).
+            home_positions[match_id] = team_rank(standings, home)
+            away_positions[match_id] = team_rank(standings, away)
+
+            # Unplayed fixtures (missing goals) cannot update the table.
+            if pd.isna(row["home_goals"]) or pd.isna(row["away_goals"]):
+                continue
+
+            hg = int(row["home_goals"])
+            ag = int(row["away_goals"])
+
+            home_points = 3 if hg > ag else (1 if hg == ag else 0)
+            away_points = 3 if ag > hg else (1 if hg == ag else 0)
+
+            home_prev = standings.get(home, (0, 0, 0))
+            away_prev = standings.get(away, (0, 0, 0))
+
+            # Accumulate (points, goal_diff, goals_for) for each team.
+            standings[home] = (
+                home_prev[0] + home_points,
+                home_prev[1] + (hg - ag),
+                home_prev[2] + hg,
+            )
+            standings[away] = (
+                away_prev[0] + away_points,
+                away_prev[1] + (ag - hg),
+                away_prev[2] + ag,
+            )
+
+    df["home_league_position"] = df["match_id"].map(home_positions)
+    df["away_league_position"] = df["match_id"].map(away_positions)
+    df["home_position_diff"] = (
+        df["away_league_position"] - df["home_league_position"]
+    )
+
+    return df
 
 
 if __name__ == "__main__":

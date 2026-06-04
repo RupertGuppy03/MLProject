@@ -12,16 +12,16 @@
 | Build unified raw dataset | Done | `src/ingest/unify_raw.py` |
 | Create canonical match table | Done | `src/ingest/build_canonical.py` |
 | Leakage-safe rolling feature builder | Done | `src/features/rolling.py` |
-| Implement sequential Elo features | To Do | `src/features/elo.py` |
+| Implement sequential Elo features | Done | `src/features/elo.py` |
 | Feature pipeline X/y/meta contract | To Do | `src/features/build_features.py` |
-| League position rolling feature | To Do | `src/features/rolling.py` |
+| League position rolling feature | Done | `src/features/rolling.py` |
 | Data quality validation on ingest | To Do | `src/ingest/validate.py` |
 
 ---
 
 ## Implement sequential Elo features (pre-match only)
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 1
 
 **User Story:**
@@ -85,7 +85,7 @@ As a user, I want a consistent `(X, y, meta)` output so modeling and backtesting
 
 ## League position rolling feature
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Should Have, Sprint 1
 
 **User Story:**
