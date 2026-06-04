@@ -49,7 +49,7 @@ As a user, I want Elo ratings updated sequentially so the model has a robust str
 
 ## Feature pipeline outputs X, y, meta with schema contract
 
-**Labels:** Must Have, Sprint 1
+**Labels:** Must Have, Sprint 1 — **DONE**
 
 **User Story:**
 As a user, I want a consistent `(X, y, meta)` output so modeling and backtesting can run without manual fixes.

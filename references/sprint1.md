@@ -13,7 +13,7 @@
 | Create canonical match table | Done | `src/ingest/build_canonical.py` |
 | Leakage-safe rolling feature builder | Done | `src/features/rolling.py` |
 | Implement sequential Elo features | Done | `src/features/elo.py` |
-| Feature pipeline X/y/meta contract | To Do | `src/features/build_features.py` |
+| Feature pipeline X/y/meta contract | Done | `src/features/build_features.py` |
 | League position rolling feature | Done | `src/features/rolling.py` |
 | Data quality validation on ingest | To Do | `src/ingest/validate.py` |
 
@@ -51,7 +51,7 @@ As a user, I want Elo ratings updated sequentially so the model has a robust str
 
 ## Feature pipeline outputs X, y, meta with schema contract
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 1
 
 **User Story:**
