@@ -249,7 +249,7 @@ As a user, I want to train a Random Forest classifier as the main model so I can
 
 ## Walk-forward backtesting engine
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want walk-forward backtesting so model performance reflects real-time prediction conditions.
