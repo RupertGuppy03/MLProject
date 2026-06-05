@@ -11,7 +11,7 @@
 | Elo-only baseline probabilities | Done | `src/models/baseline_elo.py` |
 | Logistic Regression baseline | Done | `src/models/log_reg.py` |
 | Main model training (Random Forest) | To Do | `src/models/rf.py` |
-| Walk-forward backtesting engine | To Do | `src/backtest/walk_forward.py` |
+| Walk-forward backtesting engine | Done | `src/backtest/walk_forward.py` |
 | Probability calibration | To Do | `artifacts/model_calibrated.pkl` |
 | Save final artifacts and schema contract | To Do | `artifacts/` |
 | Hyperparameter tuning | To Do | `src/models/tune_rf.py` |
@@ -113,7 +113,7 @@ As a user, I want to train a Random Forest classifier as the main model so I can
 
 ## Walk-forward backtesting engine
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
