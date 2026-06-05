@@ -8,6 +8,7 @@ from typing import Literal
 import pandas as pd
 
 from src.config import DATA_DIR
+from src.ingest.validate import validate_matches
 
 # Input file (created by unify_raw.py)
 RAW_PATH = DATA_DIR / "raw" / "matches_all.parquet"
@@ -68,7 +69,7 @@ def compute_result(home_goals, away_goals) -> Literal["HW", "D", "AW"] | None:
     return "AW"
 
 
-def build_canonical(raw_path: Path = RAW_PATH) -> pd.DataFrame:
+def build_canonical(raw_path: Path = RAW_PATH, validate_data: bool = True) -> pd.DataFrame:
     # Check the unified raw file exists
     if not raw_path.exists():
         raise FileNotFoundError(
@@ -118,6 +119,11 @@ def build_canonical(raw_path: Path = RAW_PATH) -> pd.DataFrame:
 
     # Force locked column order
     df = df[CANONICAL_COLUMNS].copy()
+
+    # Data-quality gate: check schema, quarantine malformed rows, write a report.
+    # Runs automatically on every ingest; returns only the clean (fully-labelled) rows.
+    if validate_data:
+        df, _ = validate_matches(df)
 
     # Sort rows for consistency
     df = df.sort_values(
