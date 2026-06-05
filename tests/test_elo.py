@@ -195,3 +195,74 @@ def test_missing_required_columns_raises():
     bad = pd.DataFrame({"match_id": ["m1"], "date": ["2024-08-10"]})
     with pytest.raises(ValueError, match="missing columns"):
         compute_elo_features(bad)
+
+
+# --- Margin-of-victory scaling -------------------------------------------------------
+
+def test_goal_difference_multiplier_values():
+    """World Football Elo goal-difference index: 0/1 -> 1.0, 2 -> 1.5, then (11+g)/8."""
+    mult = EloState._goal_difference_multiplier
+    assert mult(0) == 1.0
+    assert mult(1) == 1.0
+    assert mult(2) == 1.5
+    assert mult(3) == 1.75
+    assert mult(4) == 1.875
+    # Symmetric in sign — only the absolute margin matters.
+    assert mult(-3) == mult(3)
+
+
+def test_bigger_win_moves_elo_more():
+    """A 3-goal win must move ratings more than a 1-goal win; a 1-goal win equals baseline."""
+    # Baseline (1-goal win == multiplier 1.0).
+    base = EloState()
+    eh, ea = base.get("A"), base.get("B")
+    exp_home = base.expected_home(eh, ea)
+    base.update("A", "B", "HW", goal_diff=1)
+    baseline_gain = base.ratings["A"] - eh
+    assert math.isclose(baseline_gain, DEFAULT_K_FACTOR * (1.0 - exp_home), rel_tol=1e-9)
+
+    # Bigger margin -> bigger gain.
+    big = EloState()
+    big.update("A", "B", "HW", goal_diff=3)
+    big_gain = big.ratings["A"] - eh
+    assert big_gain > baseline_gain
+    assert math.isclose(big_gain, 1.75 * baseline_gain, rel_tol=1e-9)
+
+
+def test_zero_sum_preserved_with_margin():
+    """The home team's gain equals the away team's loss, even with margin scaling."""
+    state = EloState()
+    eh, ea = state.get("A"), state.get("B")
+    state.update("A", "B", "HW", goal_diff=4)
+    home_gain = state.ratings["A"] - eh
+    away_change = state.ratings["B"] - ea
+    assert math.isclose(home_gain, -away_change, rel_tol=1e-9)
+
+
+def test_margin_applied_in_compute_elo_features():
+    """A 4-0 result should raise the winner's next-match Elo more than the same fixtures 1-0."""
+    def rows(hg, ag):
+        return [
+            {"match_id": "m1", "date": "2024-08-10", "season": 2024,
+             "home_team": "Arsenal", "away_team": "Chelsea",
+             "home_goals": hg, "away_goals": ag, "result": "HW"},
+            {"match_id": "m2", "date": "2024-08-17", "season": 2024,
+             "home_team": "Arsenal", "away_team": "Liverpool",
+             "home_goals": None, "away_goals": None, "result": None},
+        ]
+
+    big, _ = compute_elo_features(_matches(rows(4, 0)))
+    small, _ = compute_elo_features(_matches(rows(1, 0)))
+
+    big_m2 = big[big["match_id"] == "m2"].iloc[0]["elo_home_pre"]
+    small_m2 = small[small["match_id"] == "m2"].iloc[0]["elo_home_pre"]
+    assert big_m2 > small_m2
+
+
+def test_margin_disabled_matches_baseline():
+    """With margin_of_victory off, goal_diff is ignored and the update is the plain K update."""
+    off = EloState(margin_of_victory=False)
+    eh = off.get("A")
+    exp_home = off.expected_home(off.get("A"), off.get("B"))
+    off.update("A", "B", "HW", goal_diff=5)
+    assert math.isclose(off.ratings["A"] - eh, DEFAULT_K_FACTOR * (1.0 - exp_home), rel_tol=1e-9)

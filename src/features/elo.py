@@ -32,8 +32,20 @@ class EloState:
     home_advantage: float = DEFAULT_HOME_ADVANTAGE
     regression_target: float = DEFAULT_REGRESSION_TARGET
     regression_factor: float = DEFAULT_REGRESSION_FACTOR
+    margin_of_victory: bool = True  # scale K by goal difference (bigger wins move ratings more)
     ratings: dict[str, float] = field(default_factory=dict)
     last_season: dict[str, int] = field(default_factory=dict)
+
+    @staticmethod
+    def _goal_difference_multiplier(goal_diff: int) -> float:
+        """World Football Elo goal-difference index (eloratings.net): a bigger winning
+        margin scales the K-factor up. A draw or one-goal win leaves K unchanged."""
+        g = abs(int(goal_diff))
+        if g <= 1:
+            return 1.0
+        if g == 2:
+            return 1.5
+        return (11 + g) / 8.0
 
     def get(self, team: str) -> float:
         """Return current rating; first-ever teams start at starting_elo."""
@@ -58,8 +70,15 @@ class EloState:
             )
         self.last_season[team] = season
 
-    def update(self, home: str, away: str, result: str) -> None:
-        """Apply the post-match Elo update for both teams."""
+    def update(
+        self, home: str, away: str, result: str, goal_diff: int | None = None
+    ) -> None:
+        """Apply the post-match Elo update for both teams.
+
+        When margin_of_victory is on and goal_diff is given, the K-factor is scaled by the
+        winning margin. With no goal_diff (or margin off) the multiplier is 1.0, i.e. the
+        plain Elo update. The update is zero-sum: the home gain equals the away loss.
+        """
         if result not in _RESULT_TO_ACTUAL_HOME:
             raise ValueError(f"EloState.update: unknown result {result!r}")
 
@@ -68,8 +87,14 @@ class EloState:
         exp_home = self.expected_home(elo_home, elo_away)
         actual_home = _RESULT_TO_ACTUAL_HOME[result]
 
-        self.ratings[home] = elo_home + self.k_factor * (actual_home - exp_home)
-        self.ratings[away] = elo_away + self.k_factor * ((1.0 - actual_home) - (1.0 - exp_home))
+        mult = (
+            self._goal_difference_multiplier(goal_diff)
+            if self.margin_of_victory and goal_diff is not None
+            else 1.0
+        )
+        delta = self.k_factor * mult * (actual_home - exp_home)
+        self.ratings[home] = elo_home + delta
+        self.ratings[away] = elo_away - delta
 
 
 def compute_elo_features(
@@ -97,6 +122,10 @@ def compute_elo_features(
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values(["date", "match_id"]).reset_index(drop=True)
 
+    # Goals power the margin-of-victory scaling. They aren't required (frames without them
+    # simply fall back to a multiplier of 1.0), but the canonical dataset always has them.
+    has_goals = {"home_goals", "away_goals"}.issubset(df.columns)
+
     elo_home_pre: list[float] = []
     elo_away_pre: list[float] = []
 
@@ -114,7 +143,10 @@ def compute_elo_features(
         elo_away_pre.append(ea)
 
         if pd.notna(row["result"]):
-            state.update(home, away, str(row["result"]))
+            goal_diff = None
+            if has_goals and pd.notna(row["home_goals"]) and pd.notna(row["away_goals"]):
+                goal_diff = int(row["home_goals"]) - int(row["away_goals"])
+            state.update(home, away, str(row["result"]), goal_diff=goal_diff)
 
     df["elo_home_pre"] = elo_home_pre
     df["elo_away_pre"] = elo_away_pre
@@ -135,6 +167,7 @@ def save_state(state: EloState, path: Path, as_of_date: str) -> None:
             "home_advantage": state.home_advantage,
             "regression_target": state.regression_target,
             "regression_factor": state.regression_factor,
+            "margin_of_victory": state.margin_of_victory,
         },
         "ratings": state.ratings,
         "last_season": state.last_season,
@@ -154,6 +187,7 @@ def load_state(path: Path) -> EloState:
         home_advantage=float(params["home_advantage"]),
         regression_target=float(params["regression_target"]),
         regression_factor=float(params["regression_factor"]),
+        margin_of_victory=bool(params.get("margin_of_victory", True)),
     )
     state.ratings = {team: float(rating) for team, rating in payload["ratings"].items()}
     state.last_season = {team: int(season) for team, season in payload["last_season"].items()}

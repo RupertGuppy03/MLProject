@@ -47,6 +47,8 @@ As a user, I want Elo ratings updated sequentially so the model has a robust str
 - At the end of the Elo walk, final ratings per team are written to `artifacts/current_elo.json` with an `as_of_date` field
 - Unit test passes: `tests/test_elo.py` covers leakage safety and all parameter behaviors
 
+**Refinement (post-Sprint-1):** added margin-of-victory K-scaling (World Football Elo goal-difference index) so bigger wins move ratings more. Locked params unchanged; draws/1-goal wins behave as before.
+
 ---
 
 ## Feature pipeline outputs X, y, meta with schema contract
