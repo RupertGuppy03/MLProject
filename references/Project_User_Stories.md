@@ -157,7 +157,7 @@ As a user, I want raw match data validated on ingest so postponed, abandoned, or
 
 ## Elo-only baseline probabilities
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want an Elo-only baseline so I can benchmark the ML model against a strong simple approach.
