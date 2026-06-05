@@ -8,7 +8,7 @@
 
 | Story | Status | Key files |
 |---|---|---|
-| Elo-only baseline probabilities | To Do | `src/models/baseline_elo.py` |
+| Elo-only baseline probabilities | Done | `src/models/baseline_elo.py` |
 | Logistic Regression baseline | To Do | `src/models/log_reg.py` |
 | Main model training (Random Forest) | To Do | `src/models/rf.py` |
 | Walk-forward backtesting engine | To Do | `src/backtest/walk_forward.py` |
@@ -22,7 +22,7 @@
 
 ## Elo-only baseline probabilities
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
