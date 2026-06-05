@@ -184,7 +184,7 @@ As a user, I want an Elo-only baseline so I can benchmark the ML model against a
 
 ## Logistic Regression baseline (multinomial)
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want a multinomial Logistic Regression baseline so I can establish a fast, interpretable ML benchmark.

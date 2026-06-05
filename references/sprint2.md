@@ -9,7 +9,7 @@
 | Story | Status | Key files |
 |---|---|---|
 | Elo-only baseline probabilities | Done | `src/models/baseline_elo.py` |
-| Logistic Regression baseline | To Do | `src/models/log_reg.py` |
+| Logistic Regression baseline | Done | `src/models/log_reg.py` |
 | Main model training (Random Forest) | To Do | `src/models/rf.py` |
 | Walk-forward backtesting engine | To Do | `src/backtest/walk_forward.py` |
 | Probability calibration | To Do | `artifacts/model_calibrated.pkl` |
@@ -50,7 +50,7 @@ As a user, I want an Elo-only baseline so I can benchmark the ML model against a
 
 ## Logistic Regression baseline (multinomial)
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
