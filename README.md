@@ -1,43 +1,37 @@
 ## Project Organization
 
 ```
-├── LICENSE            <- Open-source license if one is chosen
-├── README.md          <- The top-level README for developers using this project
+├── README.md          <- Public README: UI URL, stack, run/deploy steps
+├── requirements.txt   <- Pinned dependencies
+│
 ├── data
-│   ├── external       <- Data from third party sources
-│   ├── interim        <- Intermediate data that has been transformed
-│   ├── processed      <- The final, canonical data sets for modeling
-│   └── raw            <- The original, immutable data dump
+│   ├── raw            <- Immutable match pulls from Football-Data.org
+│   ├── processed      <- Canonical dataset + validation reports
+│   └── quarantine     <- Dropped/malformed rows from ingest validation
 │
-├── models             <- Trained and serialized models, model predictions, or model summaries
+├── artifacts          <- Trained models + locked feature schema + tuning/freshness JSONs
 │
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`
+├── docs               <- Design docs required by the DoDs (schemas, Elo config, etc.)
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials
+├── reports            <- Backtest outputs: metrics, predictions, model comparison, plots
 │
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
+├── references         <- Planning docs
+│   ├── Project_User_Stories.md   <- MASTER source of truth (all user stories)
+│   └── sprint1..4/               <- Per-story files grouped by sprint
 │
-└── src                         <- Source code for this project
-    │
-    ├── __init__.py             <- Makes src a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    │    
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
-    │
-    ├── plots.py                <- Code to create visualizations 
-    │
-    └── services                <- Service classes to connect with external platforms, tools, or APIs
-        └── __init__.py 
+├── notebooks          <- Personal scratch / exploration (not part of the pipeline)
+│
+├── scripts            <- Operational scripts: smoke tests, scheduled refresh+retrain
+│
+├── tests              <- Pytest suite, mirrors src/
+│
+└── src                <- Source code
+    ├── config.py      <- Paths, PL competition code, Football-Data settings
+    ├── ingest         <- Data pipeline: pull, unify, build canonical, validate
+    ├── features       <- Leakage-safe feature engineering: rolling, Elo, build_features
+    ├── models         <- Training + baselines: Elo, logistic regression, Random Forest, tuning
+    ├── backtest       <- Walk-forward backtesting engine
+    ├── api            <- FastAPI service: predict, inference features, match context, SHAP
+    ├── ui             <- Streamlit dashboard
+    └── services       <- External API clients (Football-Data.org)
 ```
