@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-06-05T02:11:02.509900+00:00",
+  "schema": {
+    "missing_columns": [],
+    "dtype_mismatches": {}
+  },
+  "total_rows": 1140,
+  "rows_kept": 1041,
+  "rows_dropped": 99,
+  "dropped_by_reason": {
+    "missing_goals": 99
+  },
+  "by_season": {
+    "2023": {
+      "kept": 380,
+      "dropped": 0
+    },
+    "2024": {
+      "kept": 380,
+      "dropped": 0
+    },
+    "2025": {
+      "kept": 281,
+      "dropped": 99
+    }
+  }
+}

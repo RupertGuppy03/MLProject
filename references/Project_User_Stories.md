@@ -114,7 +114,7 @@ As a developer, I want a rolling league position feature computed from season-st
 
 ## Data quality validation on ingest
 
-**Labels:** Must Have, Sprint 1
+**Labels:** Must Have, Sprint 1 — **DONE**
 
 **User Story:**
 As a user, I want raw match data validated on ingest so postponed, abandoned, or malformed matches don't silently corrupt training data, and known anomalies (e.g. the 2019/20 COVID gap) are surfaced early.

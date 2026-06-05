@@ -15,7 +15,7 @@
 | Implement sequential Elo features | Done | `src/features/elo.py` |
 | Feature pipeline X/y/meta contract | Done | `src/features/build_features.py` |
 | League position rolling feature | Done | `src/features/rolling.py` |
-| Data quality validation on ingest | To Do | `src/ingest/validate.py` |
+| Data quality validation on ingest | Done | `src/ingest/validate.py` |
 
 ---
 
@@ -118,7 +118,7 @@ As a developer, I want a rolling league position feature computed from season-st
 
 ## Data quality validation on ingest
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 1
 
 **User Story:**

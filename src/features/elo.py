@@ -100,10 +100,10 @@ def compute_elo_features(
     elo_home_pre: list[float] = []
     elo_away_pre: list[float] = []
 
-    for row in df.itertuples(index=False):
-        home = row.home_team
-        away = row.away_team
-        season = int(row.season)
+    for row in df.to_dict("records"):
+        home = str(row["home_team"])
+        away = str(row["away_team"])
+        season = int(row["season"])
 
         state.regress_for_season(home, season)
         state.regress_for_season(away, season)
@@ -113,8 +113,8 @@ def compute_elo_features(
         elo_home_pre.append(eh)
         elo_away_pre.append(ea)
 
-        if pd.notna(row.result):
-            state.update(home, away, row.result)
+        if pd.notna(row["result"]):
+            state.update(home, away, str(row["result"]))
 
     df["elo_home_pre"] = elo_home_pre
     df["elo_away_pre"] = elo_away_pre
