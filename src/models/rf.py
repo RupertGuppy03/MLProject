@@ -118,7 +118,10 @@ def main() -> None:
     # but assert it here so a regression upstream fails loudly at train time).
     assert not X.isna().any().any(), "Feature matrix X contains NaN values."
 
-    model = train_rf(X, y)
+    # Use the tuned hyperparameters when tune_rf.py has produced them, so the persisted
+    # artifact is the tuned model (the one used downstream). Falls back to defaults otherwise.
+    params = load_best_params()
+    model = train_rf(X, y, params=params)
     save_model(model)
     save_feature_importances(model, list(X.columns))
 
@@ -126,7 +129,8 @@ def main() -> None:
     # leakage-safe walk-forward backtest, not this fit-then-predict-on-the-same-data check.
     ll = log_loss(y, model.predict_proba(X), labels=model.classes_)
     print(
-        f"Random Forest trained on X={X.shape}. "
+        f"Random Forest trained on X={X.shape} using "
+        f"{'tuned params ' + str(params) if params else 'default params'}. "
         f"In-sample (optimistic) log loss: {ll:.4f}. Class order: {LABEL_ORDER}. "
         f"Saved model -> {MODEL_PATH.name}, importances -> {IMPORTANCES_PATH.name}."
     )
