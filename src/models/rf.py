@@ -14,6 +14,8 @@ from src.features.build_features import build_features
 # Where the trained model and its feature importances are persisted.
 MODEL_PATH = ARTIFACTS_DIR / "model_rf.pkl"
 IMPORTANCES_PATH = ARTIFACTS_DIR / "feature_importances.json"
+# Tuned hyperparameters written by src/models/tune_rf.py (optional — may not exist yet).
+BEST_PARAMS_PATH = ARTIFACTS_DIR / "best_params_rf.json"
 
 # Canonical home/draw/away order, shared with the other models so every model's
 # probabilities line up column-for-column in the comparison report.
@@ -65,6 +67,18 @@ def save_model(model: RandomForestClassifier, path: Path = MODEL_PATH) -> None:
 def load_model(path: Path = MODEL_PATH) -> RandomForestClassifier:
     """Load a model previously saved with save_model."""
     return joblib.load(Path(path))
+
+
+def load_best_params(path: Path = BEST_PARAMS_PATH) -> dict | None:
+    """Return tuned hyperparameters from tune_rf.py, or None if tuning hasn't run yet.
+
+    Downstream callers opt in by passing the result to train_rf(X, y, params=...), so the
+    default-RF path is unaffected when no tuned params exist.
+    """
+    path = Path(path)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
 
 
 def save_feature_importances(

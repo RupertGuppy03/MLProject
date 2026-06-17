@@ -12,6 +12,8 @@ from src.features.build_features import build_features
 from src.models.baseline_elo import EloBaseline
 from src.models.log_reg import predict_proba as log_reg_predict_proba
 from src.models.log_reg import train_log_reg
+from src.models.rf import BEST_PARAMS_PATH as RF_BEST_PARAMS_PATH
+from src.models.rf import load_best_params as rf_load_best_params
 from src.models.rf import predict_proba as rf_predict_proba
 from src.models.rf import train_rf
 
@@ -71,6 +73,17 @@ def rf_backtest_model() -> BacktestModel:
         return rf_predict_proba(state, X_test)
 
     return BacktestModel("rf", fit, predict)
+
+
+def rf_tuned_backtest_model() -> BacktestModel:
+    """Tuned Random Forest adapter — uses the params saved by tune_rf.py (best_params_rf.json)."""
+    def fit(X_train, y_train):
+        return train_rf(X_train, y_train, params=rf_load_best_params())
+
+    def predict(state, X_test):
+        return rf_predict_proba(state, X_test)
+
+    return BacktestModel("rf_tuned", fit, predict)
 
 
 def _expanding_folds(
@@ -249,9 +262,11 @@ def _atomic_write_text(text: str, path: Path) -> None:
 
 def main() -> None:
     """Run the backtest for the current baselines and print the overall comparison."""
-    _, metrics = walk_forward(
-        [elo_backtest_model(), log_reg_backtest_model(), rf_backtest_model()]
-    )
+    models = [elo_backtest_model(), log_reg_backtest_model(), rf_backtest_model()]
+    # Include the tuned RF only once tuning has produced its params, so this still runs before then.
+    if RF_BEST_PARAMS_PATH.exists():
+        models.append(rf_tuned_backtest_model())
+    _, metrics = walk_forward(models)
     overall = metrics[metrics["fold"] == "overall"].sort_values("log_loss")
     print("Walk-forward backtest — overall (lower is better):")
     for _, r in overall.iterrows():
