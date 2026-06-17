@@ -58,8 +58,19 @@ decay" matched the tuned model. Cause: ~3 seasons is too little data to down-wei
 already tracks evolving strength. The served model stays **unweighted**; the code is kept as
 documented evidence.
 
+## Draw-signal features — tried and rejected
+
+We added explicit draw-correlated features (`home_/away_rolling_draw_rate`, `elo_diff_abs`) to
+give the model a draw signal. On the walk-forward backtest they made no difference: mean
+predicted `p_draw` on actual draws moved 0.2365 → 0.2356 and draw-class log loss by 0.0005
+(noise), with overall log loss unchanged. Cause: a team's past draw rate barely predicts a
+specific match, and closeness is already implicit in Elo. The features were **reverted** to
+keep the locked schema and inference path lean; the negative result is recorded here.
+
 ## Conclusion
 
 The tuned Random Forest is the main model per the project design. It is competitive with Elo
-and near the practical ceiling for pre-match features. The highest-impact remaining lever is
-**draw-signal feature engineering**, not further model tuning.
+and **at the practical ceiling** for pre-match features: tuning, recency weighting, and
+draw-signal features were all tried, and none meaningfully beat the tuned baseline. Match
+outcomes — draws especially — carry little learnable signal beyond Elo. Further gains would
+need richer inputs (e.g. market odds, lineups), not more modelling.
