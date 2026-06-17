@@ -16,6 +16,7 @@ from src.models.rf import BEST_PARAMS_PATH as RF_BEST_PARAMS_PATH
 from src.models.rf import load_best_params as rf_load_best_params
 from src.models.rf import predict_proba as rf_predict_proba
 from src.models.rf import train_rf
+from src.models.recency import recency_weights
 
 # Canonical home/draw/away column order used for every model's probabilities.
 LABEL_ORDER = ["HW", "D", "AW"]
@@ -33,18 +34,19 @@ _EPS = 1e-15
 class BacktestModel:
     """A uniform adapter so any model plugs into the backtest.
 
-    fit(X_train, y_train) returns a fitted state; predict_proba(state, X_test) returns an
-    (n, 3) array of probabilities in [HW, D, AW] order.
+    fit(X_train, y_train, meta_train) returns a fitted state; predict_proba(state, X_test)
+    returns an (n, 3) array of probabilities in [HW, D, AW] order. meta_train carries the
+    train rows' identifiers (incl. date) for models that need them, e.g. recency weighting.
     """
 
     name: str
-    fit: Callable[[pd.DataFrame, pd.Series], Any]
+    fit: Callable[[pd.DataFrame, pd.Series, pd.DataFrame], Any]
     predict_proba: Callable[[Any, pd.DataFrame], np.ndarray]
 
 
 def elo_backtest_model() -> BacktestModel:
     """Elo baseline adapter: fit the draw rate on the train labels, predict from Elo columns."""
-    def fit(_X_train, y_train):
+    def fit(_X_train, y_train, _meta_train):
         return EloBaseline().fit(y_train)  # Elo baseline fits only the draw rate from labels
 
     def predict(state, X_test):
@@ -55,7 +57,7 @@ def elo_backtest_model() -> BacktestModel:
 
 def log_reg_backtest_model() -> BacktestModel:
     """Logistic Regression adapter (scaler fit on the train split only — no leakage)."""
-    def fit(X_train, y_train):
+    def fit(X_train, y_train, _meta_train):
         return train_log_reg(X_train, y_train)
 
     def predict(state, X_test):
@@ -66,7 +68,7 @@ def log_reg_backtest_model() -> BacktestModel:
 
 def rf_backtest_model() -> BacktestModel:
     """Random Forest adapter (the main model) — trained on the train split of each fold."""
-    def fit(X_train, y_train):
+    def fit(X_train, y_train, _meta_train):
         return train_rf(X_train, y_train)
 
     def predict(state, X_test):
@@ -77,13 +79,30 @@ def rf_backtest_model() -> BacktestModel:
 
 def rf_tuned_backtest_model() -> BacktestModel:
     """Tuned Random Forest adapter — uses the params saved by tune_rf.py (best_params_rf.json)."""
-    def fit(X_train, y_train):
+    def fit(X_train, y_train, _meta_train):
         return train_rf(X_train, y_train, params=rf_load_best_params())
 
     def predict(state, X_test):
         return rf_predict_proba(state, X_test)
 
     return BacktestModel("rf_tuned", fit, predict)
+
+
+def rf_recency_backtest_model(half_life_days: float = 365.0) -> BacktestModel:
+    """Tuned RF + recency weighting — recent matches weigh more (addresses fold-5 decay).
+
+    Same tuned params as rf_tuned, so the only delta vs rf_tuned is the sample weighting.
+    Weights are computed from the train fold's dates only (reference = latest train match),
+    so there is no leakage.
+    """
+    def fit(X_train, y_train, meta_train):
+        weights = recency_weights(meta_train["date"], half_life_days=half_life_days)
+        return train_rf(X_train, y_train, params=rf_load_best_params(), sample_weight=weights)
+
+    def predict(state, X_test):
+        return rf_predict_proba(state, X_test)
+
+    return BacktestModel("rf_recency", fit, predict)
 
 
 def _expanding_folds(
@@ -161,7 +180,7 @@ def walk_forward(
     pred_rows = []
     for model in models:
         for fold_id, (train_pos, test_pos) in enumerate(folds):
-            state = model.fit(X.iloc[train_pos], y.iloc[train_pos])
+            state = model.fit(X.iloc[train_pos], y.iloc[train_pos], meta.iloc[train_pos])
             proba = model.predict_proba(state, X.iloc[test_pos])
             block = meta.iloc[test_pos][["match_id", "date", "season"]].copy()
             block["fold"] = fold_id
@@ -263,9 +282,10 @@ def _atomic_write_text(text: str, path: Path) -> None:
 def main() -> None:
     """Run the backtest for the current baselines and print the overall comparison."""
     models = [elo_backtest_model(), log_reg_backtest_model(), rf_backtest_model()]
-    # Include the tuned RF only once tuning has produced its params, so this still runs before then.
+    # Include the tuned + recency RFs only once tuning has produced params, so this still runs before then.
     if RF_BEST_PARAMS_PATH.exists():
         models.append(rf_tuned_backtest_model())
+        models.append(rf_recency_backtest_model())
     _, metrics = walk_forward(models)
     overall = metrics[metrics["fold"] == "overall"].sort_values("log_loss")
     print("Walk-forward backtest — overall (lower is better):")

@@ -85,6 +85,23 @@ class TestRandomForest:
         for i, label in enumerate(LABEL_ORDER):
             assert np.allclose(ordered[:, i], raw[:, classes.index(label)])
 
+    def test_sample_weight_influences_model(self):
+        """train_rf accepts sample_weight and up-weighting a class shifts its predictions."""
+        rng = np.random.default_rng(1)
+        n = 90
+        X = pd.DataFrame(rng.normal(size=(n, 3)), columns=["f1", "f2", "f3"])
+        y = pd.Series(["HW", "D", "AW"] * (n // 3))
+
+        base = train_rf(X, y)
+        weights = np.where(y.to_numpy() == "HW", 10.0, 1.0)  # heavily up-weight home wins
+        weighted = train_rf(X, y, sample_weight=weights)
+
+        # With no feature signal, leaves reflect (weighted) class proportions, so up-weighting
+        # HW must raise the average predicted home-win probability.
+        p_home_base = predict_proba(base, X)[:, 0].mean()
+        p_home_weighted = predict_proba(weighted, X)[:, 0].mean()
+        assert p_home_weighted > p_home_base
+
     def test_save_and_load_round_trip(self, tmp_path):
         """DoD: the model can be saved and loaded with joblib, preserving predictions."""
         X, y = _make_frames()

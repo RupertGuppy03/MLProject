@@ -33,15 +33,19 @@ DEFAULT_PARAMS = {
 }
 
 
-def train_rf(X: pd.DataFrame, y, params: dict | None = None) -> RandomForestClassifier:
+def train_rf(
+    X: pd.DataFrame, y, params: dict | None = None, sample_weight=None
+) -> RandomForestClassifier:
     """Train the main Random Forest classifier on the feature matrix.
 
     Merges any overrides onto the fixed defaults, fits, and returns the model. The model
     exposes `.feature_importances_` for explainability downstream (SHAP / diagnostics).
+    `sample_weight` (optional) lets callers up-weight rows — e.g. recency weighting so recent
+    matches influence the model more; None keeps every row equally weighted.
     """
     clf_params = {**DEFAULT_PARAMS, **(params or {})}
     model = RandomForestClassifier(**clf_params)
-    model.fit(X, y)
+    model.fit(X, y, sample_weight=sample_weight)
     return model
 
 
