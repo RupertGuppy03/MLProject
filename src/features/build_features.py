@@ -60,6 +60,17 @@ def _save_schema(X: pd.DataFrame, path: Path = SCHEMA_PATH) -> None:
         "feature_columns": list(X.columns),
         "dtypes": {col: str(dtype) for col, dtype in X.dtypes.items()},
         "n_features": X.shape[1],
+        # Preprocessing the inference path must reproduce. The served model is a tree-based
+        # Random Forest, so there is no scaling; all preprocessing is the leakage-safe
+        # imputation already baked into build_features (see src/features/rolling.py).
+        "preprocessing": {
+            "scaling": "none (tree-based RandomForest)",
+            "imputation": (
+                "rolling-feature NaNs filled with league average "
+                "(defaults: win_rate 0.5, clean_sheet_rate 0.3); "
+                "days_rest NaN -> 7; is_new_team flags rows with no prior history"
+            ),
+        },
     }
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, indent=2))

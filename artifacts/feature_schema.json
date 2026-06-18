@@ -71,5 +71,9 @@
     "elo_away_pre": "float64",
     "elo_diff": "float64"
   },
-  "n_features": 34
+  "n_features": 34,
+  "preprocessing": {
+    "scaling": "none (tree-based RandomForest)",
+    "imputation": "rolling-feature NaNs filled with league average (defaults: win_rate 0.5, clean_sheet_rate 0.3); days_rest NaN -> 7; is_new_team flags rows with no prior history"
+  }
 }

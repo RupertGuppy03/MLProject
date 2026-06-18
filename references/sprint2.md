@@ -10,13 +10,15 @@
 |---|---|---|
 | Elo-only baseline probabilities | Done | `src/models/baseline_elo.py` |
 | Logistic Regression baseline | Done | `src/models/log_reg.py` |
-| Main model training (Random Forest) | To Do | `src/models/rf.py` |
+| Main model training (Random Forest) | Done | `src/models/rf.py` |
 | Walk-forward backtesting engine | Done | `src/backtest/walk_forward.py` |
-| Probability calibration | To Do | `artifacts/model_calibrated.pkl` |
-| Save final artifacts and schema contract | To Do | `artifacts/` |
-| Hyperparameter tuning | To Do | `src/models/tune_rf.py` |
+| Probability calibration | Done | `artifacts/model_calibrated.pkl` |
+| Save final artifacts and schema contract | Done | `artifacts/chosen_model.pkl` |
+| Hyperparameter tuning | Done | `src/models/tune_rf.py` |
 | Model comparison and selection | To Do | `reports/model_comparison.md` |
-| Full pipeline integration test | To Do | `tests/test_pipeline_integration.py` |
+| Full pipeline integration test | Done | `tests/test_pipeline_integration.py` |
+| Recency-weighted training (sample_weight decay) | To Do | `src/models/recency.py` |
+| Draw-signal feature engineering | To Do | `src/features/…` |
 
 ---
 
@@ -77,7 +79,7 @@ As a user, I want a multinomial Logistic Regression baseline so I can establish 
 
 ## Main model training (Random Forest Classifier)
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -143,7 +145,7 @@ As a user, I want walk-forward backtesting so model performance reflects real-ti
 
 ## Probability calibration
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -169,7 +171,7 @@ As a user, I want calibrated probabilities so the implied odds derived from mode
 
 ## Save final artifacts and schema contract
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -180,7 +182,7 @@ As a user, I want saved model artifacts and a feature schema so API inference is
 - **Acc Test 1: Artifacts saved**
   - Given a best model is selected
   - When I run the training pipeline
-  - Then `artifacts/model.pkl` and `artifacts/feature_schema.json` exist
+  - Then `artifacts/chosen_model.pkl` and `artifacts/feature_schema.json` exist
 - **Acc Test 2: Artifacts can be loaded and used**
   - Given the artifact files exist
   - When I load them and run a sample prediction
@@ -196,7 +198,7 @@ As a user, I want saved model artifacts and a feature schema so API inference is
 
 ## Hyperparameter tuning for Random Forest
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -258,7 +260,7 @@ As a user, I want a clear comparison of all models so I can justify why the Rand
 
 ## Full pipeline integration test
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -284,3 +286,50 @@ As a developer, I want a single end-to-end integration test so I can catch bugs 
 - Runs against real data files from `data/raw/`
 - Covers ingest → canonical → features → X/y/meta in one test
 - Passes cleanly with `pytest tests/test_pipeline_integration.py`
+
+---
+
+## Recency-weighted training (sample_weight decay)
+
+**Status:** To Do
+**Labels:** Should Have, Sprint 2
+
+**User Story:**
+(Should Have) As a developer, I want to apply exponential sample weights that decay with match age during RF training so that recent matches have more influence on the model, addressing the fold-5 degradation observed in the per-fold backtest.
+
+**Acceptance Tests:**
+
+- **Acc Test 1: Weights decay with age**
+  - Given training match dates and a half-life
+  - When recency weights are computed
+  - Then a match `half_life_days` older than the most recent has half its weight, and weights decrease monotonically with age
+- **Acc Test 2: No leakage**
+  - Given a fold's training rows
+  - When weights are computed
+  - Then the reference date is the latest training match (no future information is used)
+- **Acc Test 3: Training accepts weights**
+  - Given `train_rf` and a weight vector
+  - When the model is trained
+  - Then the weights influence the fitted model (predictions change vs unweighted)
+- **Acc Test 4: Evaluated in the backtest**
+  - Given the walk-forward backtest
+  - Then a `rf_recency` model appears with per-fold metrics so its recent-fold log loss can be compared to `rf_tuned`
+
+**Definition of Done:**
+
+- Implemented: `src/models/recency.py` (`recency_weights`) and `sample_weight` support in `train_rf`
+- `rf_recency` adapter included in the walk-forward comparison
+- Tests cover weight decay, no leakage, and training plumbing
+- Decision recorded: keep recency in the served model only if it improves recent-fold log loss
+
+---
+
+## Draw-signal feature engineering
+
+**Status:** To Do
+**Labels:** Should Have, Sprint 2
+
+**User Story:**
+(Should Have) As a developer, I want to add draw-signal features to the feature matrix so the model has explicit information that correlates with drawn matches, improving probability mass assigned to the draw class.
+
+*(Acceptance tests / DoD to be detailed when this story is started — note it touches the locked `artifacts/feature_schema.json` and the inference path together.)*
