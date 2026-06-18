@@ -16,7 +16,7 @@
 | Save final artifacts and schema contract | Done | `artifacts/chosen_model.pkl` |
 | Hyperparameter tuning | Done | `src/models/tune_rf.py` |
 | Model comparison and selection | To Do | `reports/model_comparison.md` |
-| Full pipeline integration test | To Do | `tests/test_pipeline_integration.py` |
+| Full pipeline integration test | Done | `tests/test_pipeline_integration.py` |
 | Recency-weighted training (sample_weight decay) | To Do | `src/models/recency.py` |
 | Draw-signal feature engineering | To Do | `src/features/…` |
 
@@ -260,7 +260,7 @@ As a user, I want a clear comparison of all models so I can justify why the Rand
 
 ## Full pipeline integration test
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
