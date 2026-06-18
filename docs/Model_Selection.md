@@ -1,0 +1,7 @@
+We selected the tuned Random Forest (rf_tuned) as the production model. The choice is driven by what the product actually needs: reliable, calibrated win/draw/loss probabilities, not single-outcome accuracy.
+
+Judged on proper scoring rules, rf_tuned is the best deployable model, with the lowest log loss (1.0238) and Brier score (0.6137) of all learned models. Only the Elo baseline edges it, but that is a single-feature benchmark with no feature learning or explainability, unsuitable as a product.
+
+We deliberately ignored accuracy and draw recall. Models that predict more draws (log_reg, default rf) score worse on log loss because those predictions are mostly wrong. Draw AUC sits near 0.50 across every model, including the Elo baseline, showing draws are not separable from narrow wins using the current features. This is a feature-content ceiling, not a modelling failure, and is the documented motivation for future xG integration.
+
+The reliability curves confirm rf_tuned is well-calibrated across all three outcomes, so its probabilities and implied odds are trustworthy. It also retrains deterministically each matchweek with updated Elo, making it the right fit for the deployment pipeline.
