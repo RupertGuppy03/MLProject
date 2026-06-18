@@ -35,3 +35,19 @@
     ├── ui             <- Streamlit dashboard
     └── services       <- External API clients (Football-Data.org)
 ```
+
+## Regenerate artifacts
+
+One command retrains the shipped model and regenerates every artifact the API serves from:
+
+```
+python -m src.models.save_artifacts
+```
+
+This trains the chosen model (the tuned Random Forest) on the full leakage-safe feature
+matrix and overwrites:
+
+- `artifacts/chosen_model.pkl` — the served model
+- `artifacts/feature_schema.json` — locked feature contract (columns, dtypes, preprocessing)
+- `artifacts/feature_importances.json`
+- `artifacts/current_elo.json` — latest Elo ratings used to build inference features

@@ -211,7 +211,7 @@ As a user, I want a multinomial Logistic Regression baseline so I can establish 
 
 ## Main model training (Random Forest Classifier)
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want to train a Random Forest classifier as the main model so I can generate competitive, calibrated match outcome probabilities with explainability via built-in feature importances.
@@ -281,7 +281,7 @@ As a user, I want walk-forward backtesting so model performance reflects real-ti
 
 ## Probability calibration
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want calibrated probabilities so the implied odds derived from model output are meaningful and stable.
@@ -307,7 +307,7 @@ As a user, I want calibrated probabilities so the implied odds derived from mode
 
 ## Save final artifacts and schema contract
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want saved model artifacts and a feature schema so API inference is consistent and reproducible.
@@ -317,7 +317,7 @@ As a user, I want saved model artifacts and a feature schema so API inference is
 - **Acc Test 1: Artifacts saved**
   - Given a best model is selected
   - When I run the training pipeline
-  - Then `artifacts/model.pkl` exists
+  - Then `artifacts/chosen_model.pkl` exists
   - And `artifacts/feature_schema.json` exists
 - **Acc Test 2: Artifacts can be loaded and used**
   - Given the artifact files exist
@@ -334,7 +334,7 @@ As a user, I want saved model artifacts and a feature schema so API inference is
 
 ## Hyperparameter tuning for Random Forest
 
-**Labels:** Must Have, Sprint 2
+**Labels:** Must Have, Sprint 2 — **DONE**
 
 **User Story:**
 As a user, I want to tune the Random Forest hyperparameters using time-series-safe cross-validation so I can improve probabilistic performance without data leakage or overfitting.

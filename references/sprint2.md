@@ -10,11 +10,11 @@
 |---|---|---|
 | Elo-only baseline probabilities | Done | `src/models/baseline_elo.py` |
 | Logistic Regression baseline | Done | `src/models/log_reg.py` |
-| Main model training (Random Forest) | To Do | `src/models/rf.py` |
+| Main model training (Random Forest) | Done | `src/models/rf.py` |
 | Walk-forward backtesting engine | Done | `src/backtest/walk_forward.py` |
 | Probability calibration | Done | `artifacts/model_calibrated.pkl` |
-| Save final artifacts and schema contract | To Do | `artifacts/` |
-| Hyperparameter tuning | To Do | `src/models/tune_rf.py` |
+| Save final artifacts and schema contract | Done | `artifacts/chosen_model.pkl` |
+| Hyperparameter tuning | Done | `src/models/tune_rf.py` |
 | Model comparison and selection | To Do | `reports/model_comparison.md` |
 | Full pipeline integration test | To Do | `tests/test_pipeline_integration.py` |
 | Recency-weighted training (sample_weight decay) | To Do | `src/models/recency.py` |
@@ -79,7 +79,7 @@ As a user, I want a multinomial Logistic Regression baseline so I can establish 
 
 ## Main model training (Random Forest Classifier)
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -171,7 +171,7 @@ As a user, I want calibrated probabilities so the implied odds derived from mode
 
 ## Save final artifacts and schema contract
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
@@ -182,7 +182,7 @@ As a user, I want saved model artifacts and a feature schema so API inference is
 - **Acc Test 1: Artifacts saved**
   - Given a best model is selected
   - When I run the training pipeline
-  - Then `artifacts/model.pkl` and `artifacts/feature_schema.json` exist
+  - Then `artifacts/chosen_model.pkl` and `artifacts/feature_schema.json` exist
 - **Acc Test 2: Artifacts can be loaded and used**
   - Given the artifact files exist
   - When I load them and run a sample prediction
@@ -198,7 +198,7 @@ As a user, I want saved model artifacts and a feature schema so API inference is
 
 ## Hyperparameter tuning for Random Forest
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 2
 
 **User Story:**
