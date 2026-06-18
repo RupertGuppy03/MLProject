@@ -12,6 +12,7 @@
 | Inference feature builder | To Do | `src/api/inference_features.py` |
 | Streamlit dashboard | To Do | `src/ui/app.py` |
 | Match context and SHAP explanation panel | To Do | `src/api/explain.py`, `src/api/match_context.py` |
+| Local network access (CORS + configurable API URL) | To Do | `src/api/main.py`, `src/ui/app.py` |
 
 ---
 
@@ -43,6 +44,8 @@ As a user, I want a `/predict` endpoint so the system can return match outcome p
 - Endpoint implemented in `src/api/main.py`
 - Pydantic request/response models defined
 - `/docs` shows correct schema
+- `GET /health` returns 200 with a simple status payload (used by deployment health checks)
+- `GET /metadata` returns `last_updated_date` and `data_through_date` from `artifacts/last_updated.json`
 - Smoke test script exists: `scripts/smoke_api.sh`
 
 ---
@@ -134,3 +137,35 @@ As a user, I want a rich explanation panel showing match context (Elo trajectory
 - API endpoint returns the full context dictionary
 - Streamlit dashboard matches the UI mock in `references/project_UI_example.html`
 - Integration test: `tests/test_api_context_schema.py`
+
+---
+
+## Local network access (CORS + configurable API URL)
+
+**Status:** To Do
+**Labels:** Must Have, Sprint 3
+
+**User Story:**
+As a user, I want the FastAPI service and Streamlit dashboard reachable from another device on the same local network, so I can test the app from my phone or a second laptop.
+
+**Acceptance Tests:**
+
+- **Acc Test 1: API reachable over the LAN**
+  - Given FastAPI is bound to `0.0.0.0`
+  - When another device on the network requests `/predict` at the host's LAN IP
+  - Then it returns a valid response
+- **Acc Test 2: CORS allows the Streamlit origin**
+  - Given Streamlit is served from a different origin
+  - When it calls the API from the browser
+  - Then the response carries `Access-Control-Allow-Origin` and the call is not blocked
+- **Acc Test 3: API base URL is configurable**
+  - Given an `API_BASE_URL` env var/secret
+  - When Streamlit starts
+  - Then it calls that URL (default `http://localhost:8000`) with no hardcoded host
+
+**Definition of Done:**
+
+- FastAPI launched on `0.0.0.0` with a documented `uvicorn` command
+- CORS middleware configured in `src/api/main.py` (allowed origins via env; permissive default for LAN/dev)
+- Streamlit (`src/ui/app.py`) reads `API_BASE_URL` from env/secrets, defaulting to localhost
+- README documents running both on the LAN (find host IP, set `API_BASE_URL`)
