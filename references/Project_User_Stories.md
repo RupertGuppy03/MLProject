@@ -525,7 +525,7 @@ As a user, I want a Streamlit dashboard so I can select teams and instantly view
 
 ## Match context and SHAP explanation panel
 
-**Labels:** Should Have, Sprint 3
+**Labels:** Should Have, Sprint 3 — **DONE**
 
 **User Story:**
 As a user, I want a rich explanation panel showing match context (Elo trajectory, rolling form, head-to-head, home/away splits) plus per-prediction SHAP values, so I can understand why the model favoured this specific outcome. This story also ensures every chart in the UI mock has a backend data source — nothing is faked or hardcoded.

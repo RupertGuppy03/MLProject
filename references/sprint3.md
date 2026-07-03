@@ -11,7 +11,7 @@
 | FastAPI predict endpoint | Done | `src/api/main.py` |
 | Inference feature builder | Done | `src/api/inference_features.py` |
 | Streamlit dashboard | Done | `src/ui/app.py` |
-| Match context and SHAP explanation panel | To Do | `src/api/explain.py`, `src/api/match_context.py` |
+| Match context and SHAP explanation panel | Done | `src/api/explain.py`, `src/api/match_context.py` |
 | Local network access (CORS + configurable API URL) | To Do | `src/api/main.py`, `src/ui/app.py` |
 | Teams list endpoint | Done | `src/api/main.py`, `src/ui/app.py` |
 
@@ -107,7 +107,7 @@ As a user, I want a Streamlit dashboard so I can select teams and instantly view
 
 ## Match context and SHAP explanation panel
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Should Have, Sprint 3
 
 **User Story:**
@@ -207,3 +207,37 @@ As a user, I want a `/teams` endpoint that returns the list of selectable teams,
 - Pydantic response model defined; `/docs` shows correct schema
 - Streamlit dashboard (`src/ui/app.py`) reads its dropdown options from `/teams`
 - Unit test verifies the endpoint returns a sorted, de-duplicated, non-empty list: `tests/test_teams_endpoint.py`
+
+## Interactive stadium map for selected fixture
+
+**Labels:** Could Have, Sprint 3
+
+**User Story:**
+As a user, I want an interactive map showing the selected fixture's stadium with a 3D bar representing league points, so I get a visually engaging way to see team strength alongside the other charts.
+
+**Acceptance Tests:**
+
+- **Acc Test 1: Map centres on selected match**
+  - Given a user selects a home and away team
+  - When the prediction is run
+  - Then the map automatically zooms to the home team's stadium location
+  - And the user does not need to manually pan or search
+
+- **Acc Test 2: Bar height reflects league points**
+  - Given the selected teams have current league points
+  - When the map renders
+  - Then each team's bar height is proportional to their points total
+
+- **Acc Test 3: Other fixtures shown in greyscale**
+  - Given other Premier League fixtures are upcoming
+  - When the map renders
+  - Then those fixtures' home stadiums appear as greyscale bars
+  - And the selected fixture's bars are shown in full colour
+
+**Definition of Done:**
+
+- Map renders using an interactive 3D map component
+- Selected fixture auto-focuses without manual navigation
+- Bar height driven by real league points data
+- Non-selected fixtures rendered in greyscale for contrast
+- Stadium locations are accurate for all Premier League teams

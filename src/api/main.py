@@ -17,7 +17,9 @@ from functools import lru_cache
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from src.api.explain import top_feature_contributions
 from src.api.inference_features import build_inference_features, get_valid_teams
+from src.api.match_context import build_match_context
 from src.api.metadata import read_last_updated
 from src.models.rf import LABEL_ORDER, load_model, predict_proba
 from src.models.save_artifacts import CHOSEN_MODEL_PATH
@@ -59,6 +61,50 @@ class ImpliedOdds(BaseModel):
     away: float | None
 
 
+class VenueSplits(BaseModel):
+    home_goals_for: float
+    home_goals_against: float
+    away_goals_for: float
+    away_goals_against: float
+
+
+class TeamContext(BaseModel):
+    team: str
+    current_elo: float
+    elo_trajectory: list[float]
+    form: list[str]
+    rolling_goals_scored: list[float]
+    rolling_goals_conceded: list[float]
+    venue_splits: VenueSplits
+    ppg: float
+    clean_sheets: int
+    league_position: int
+
+
+class HeadToHead(BaseModel):
+    home_wins: int
+    draws: int
+    away_wins: int
+    total: int
+
+
+class MatchContext(BaseModel):
+    as_of_date: str
+    home: TeamContext
+    away: TeamContext
+    head_to_head: HeadToHead
+
+
+class FeatureContribution(BaseModel):
+    feature: str
+    contribution: float
+
+
+class Explanation(BaseModel):
+    predicted_class: str
+    top_features: list[FeatureContribution]
+
+
 class PredictResponse(BaseModel):
     home_team: str
     away_team: str
@@ -66,6 +112,8 @@ class PredictResponse(BaseModel):
     probabilities: Probabilities
     implied_odds: ImpliedOdds
     predicted_outcome: str
+    context: MatchContext
+    explanation: Explanation
 
 
 class TeamsResponse(BaseModel):
@@ -123,15 +171,27 @@ def predict(request: PredictRequest) -> PredictResponse:
         raise HTTPException(status_code=400, detail=str(exc))
 
     # predict_proba returns [p_home, p_draw, p_away] (reordered from the model's classes_).
-    proba = predict_proba(_get_model(), X)[0]
+    model = _get_model()
+    proba = predict_proba(model, X)[0]
     p_home, p_draw, p_away = (float(p) for p in proba)
 
     # Implied (fair) odds are the reciprocal of each probability; guard against zero.
     def to_odds(p: float) -> float | None:
         return round(1.0 / p, 2) if p > 0 else None
 
-    # Highest-probability outcome, mapped to a human-readable label.
-    predicted_outcome = _OUTCOME_LABELS[max(range(3), key=lambda i: proba[i])]
+    # Highest-probability outcome. LABEL_ORDER (["HW","D","AW"]) is the model-label form of the
+    # same index; _OUTCOME_LABELS is the human-readable form.
+    best = max(range(3), key=lambda i: proba[i])
+    predicted_outcome = _OUTCOME_LABELS[best]
+
+    # Rich match context (real data behind every chart) + per-prediction SHAP on the same X.
+    context = build_match_context(
+        request.home_team, request.away_team, as_of_date=request.as_of_date
+    )
+    explanation = {
+        "predicted_class": predicted_outcome,
+        "top_features": top_feature_contributions(model, X, LABEL_ORDER[best]),
+    }
 
     return PredictResponse(
         home_team=request.home_team,
@@ -142,4 +202,6 @@ def predict(request: PredictRequest) -> PredictResponse:
             home=to_odds(p_home), draw=to_odds(p_draw), away=to_odds(p_away)
         ),
         predicted_outcome=predicted_outcome,
+        context=context,
+        explanation=explanation,
     )
