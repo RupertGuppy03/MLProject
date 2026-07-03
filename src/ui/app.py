@@ -19,11 +19,21 @@ import requests  # noqa: E402
 import streamlit as st  # noqa: E402
 
 from src.ui.api_client import (  # noqa: E402
-    format_outcome,
     get_teams,
     predict,
     selection_error,
 )
+from src.ui.team_colors import get_team_color  # noqa: E402
+
+# Neutral amber used for the Draw outcome (matches the reference mock).
+DRAW_COLOR = "#EAB308"
+
+
+def colored_name(team: str, color: str | None = None) -> str:
+    """Render a team name (or label) as bold HTML in its brand colour."""
+    color = color or get_team_color(team)
+    return f"<span style='color:{color};font-weight:700'>{team}</span>"
+
 
 st.set_page_config(page_title="PL Match Predictor", page_icon="⚽", layout="centered")
 
@@ -41,9 +51,13 @@ except requests.RequestException:
     st.stop()
 
 # Team selection: default the away side to a different team so the form is valid by default.
+# Streamlit can't colour the dropdown options themselves, so show the selected team's name in its
+# brand colour just beneath each selector for instant feedback.
 col_home, col_away = st.columns(2)
 home_team = col_home.selectbox("Home team", teams, index=0)
+col_home.markdown(colored_name(home_team), unsafe_allow_html=True)
 away_team = col_away.selectbox("Away team", teams, index=1 if len(teams) > 1 else 0)
+col_away.markdown(colored_name(away_team), unsafe_allow_html=True)
 
 if st.button("Run Prediction", type="primary"):
     # Client-side guard: prevent selecting the same team on both sides (Acc Test 1).
@@ -66,16 +80,27 @@ if st.button("Run Prediction", type="primary"):
     probs = result["probabilities"]
     odds = result["implied_odds"]
 
-    # Predicted outcome headline.
-    st.subheader(f"Predicted: {format_outcome(result['predicted_outcome'], home_team, away_team)}")
+    # Predicted-outcome headline, with the winning team's name in its brand colour.
+    outcome = result["predicted_outcome"]
+    if outcome == "home_win":
+        headline = f"Predicted: {colored_name(home_team)} win"
+    elif outcome == "away_win":
+        headline = f"Predicted: {colored_name(away_team)} win"
+    else:
+        headline = f"Predicted: {colored_name('Draw', DRAW_COLOR)}"
+    st.markdown(f"<h3>{headline}</h3>", unsafe_allow_html=True)
 
-    # Three outcome cards: probability as a percentage + implied odds beneath.
+    # Three outcome cards: coloured label, probability as a percentage, implied odds beneath.
     cols = st.columns(3)
     cards = [
-        (cols[0], f"{home_team} win", probs["p_home"], odds["home"]),
-        (cols[1], "Draw", probs["p_draw"], odds["draw"]),
-        (cols[2], f"{away_team} win", probs["p_away"], odds["away"]),
+        (cols[0], f"{home_team} win", get_team_color(home_team), probs["p_home"], odds["home"]),
+        (cols[1], "Draw", DRAW_COLOR, probs["p_draw"], odds["draw"]),
+        (cols[2], f"{away_team} win", get_team_color(away_team), probs["p_away"], odds["away"]),
     ]
-    for col, label, prob, odd in cards:
-        col.metric(label, f"{prob * 100:.1f}%")
+    for col, label, color, prob, odd in cards:
+        col.markdown(colored_name(label, color), unsafe_allow_html=True)
+        col.markdown(
+            f"<div style='font-size:2.4rem;font-weight:700'>{prob * 100:.1f}%</div>",
+            unsafe_allow_html=True,
+        )
         col.caption(f"Implied odds: {odd:.2f}" if odd is not None else "Implied odds: —")
