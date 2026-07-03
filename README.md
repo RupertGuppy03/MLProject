@@ -36,6 +36,27 @@
     └── services       <- External API clients (Football-Data.org)
 ```
 
+## Run the app locally
+
+The app is a Streamlit dashboard talking to a FastAPI backend. Run them in two terminals.
+
+```
+pip install -r requirements.txt
+
+# Terminal 1 — API (http://localhost:8000, docs at /docs)
+uvicorn src.api.main:app --reload
+
+# Terminal 2 — dashboard (http://localhost:8501)
+streamlit run src/ui/app.py
+```
+
+Pick a home and away team, click **Run Prediction**, and you'll get win / draw / win
+probabilities, implied odds, and the predicted outcome.
+
+### Dashboard
+
+![Match predictor dashboard](docs/screenshots/dashboard.png)
+
 ## Regenerate artifacts
 
 One command retrains the shipped model and regenerates every artifact the API serves from:
