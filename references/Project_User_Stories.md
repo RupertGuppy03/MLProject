@@ -497,7 +497,7 @@ As a user, I want inference-time feature generation that uses only historical da
 
 ## Streamlit dashboard
 
-**Labels:** Must Have, Sprint 3
+**Labels:** Must Have, Sprint 3 — **DONE**
 
 **User Story:**
 As a user, I want a Streamlit dashboard so I can select teams and instantly view probabilities, implied odds, and the predicted outcome.

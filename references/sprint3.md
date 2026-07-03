@@ -10,10 +10,10 @@
 |---|---|---|
 | FastAPI predict endpoint | Done | `src/api/main.py` |
 | Inference feature builder | Done | `src/api/inference_features.py` |
-| Streamlit dashboard | To Do | `src/ui/app.py` |
+| Streamlit dashboard | Done | `src/ui/app.py` |
 | Match context and SHAP explanation panel | To Do | `src/api/explain.py`, `src/api/match_context.py` |
 | Local network access (CORS + configurable API URL) | To Do | `src/api/main.py`, `src/ui/app.py` |
-| Teams list endpoint | In Progress | `src/api/main.py`, `src/ui/app.py` |
+| Teams list endpoint | Done | `src/api/main.py`, `src/ui/app.py` |
 
 ---
 
@@ -80,7 +80,7 @@ As a user, I want inference-time feature generation that uses only historical da
 
 ## Streamlit dashboard
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Must Have, Sprint 3
 
 **User Story:**
@@ -139,6 +139,8 @@ As a user, I want a rich explanation panel showing match context (Elo trajectory
 - Streamlit dashboard matches the UI mock in `references/project_UI_example.html`
 - Integration test: `tests/test_api_context_schema.py`
 
+note when building this part, look at the example html webapp to see how the ideal structure and graphs included should look like.
+
 ---
 
 ## Local network access (CORS + configurable API URL)
@@ -175,11 +177,8 @@ As a user, I want the FastAPI service and Streamlit dashboard reachable from ano
 
 ## Teams list endpoint
 
-**Status:** In Progress
+**Status:** Done
 **Labels:** Must Have, Sprint 3
-
-**Note:** API side (`GET /teams` + `tests/test_teams_endpoint.py`) delivered. Remaining bullet —
-Streamlit dashboard reading the dropdowns from `/teams` — completes with the Streamlit story.
 
 **User Story:**
 As a user, I want a `/teams` endpoint that returns the list of selectable teams, so the dashboard can populate its home/away dropdowns from a single source of truth instead of hardcoding team names.
