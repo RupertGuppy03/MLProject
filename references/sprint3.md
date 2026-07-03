@@ -13,6 +13,7 @@
 | Streamlit dashboard | To Do | `src/ui/app.py` |
 | Match context and SHAP explanation panel | To Do | `src/api/explain.py`, `src/api/match_context.py` |
 | Local network access (CORS + configurable API URL) | To Do | `src/api/main.py`, `src/ui/app.py` |
+| Teams list endpoint | To Do | `src/api/main.py`, `src/ui/app.py` |
 
 ---
 
@@ -169,3 +170,38 @@ As a user, I want the FastAPI service and Streamlit dashboard reachable from ano
 - CORS middleware configured in `src/api/main.py` (allowed origins via env; permissive default for LAN/dev)
 - Streamlit (`src/ui/app.py`) reads `API_BASE_URL` from env/secrets, defaulting to localhost
 - README documents running both on the LAN (find host IP, set `API_BASE_URL`)
+
+---
+
+## Teams list endpoint
+
+**Status:** To Do
+**Labels:** Must Have, Sprint 3
+
+**User Story:**
+As a user, I want a `/teams` endpoint that returns the list of selectable teams, so the dashboard can populate its home/away dropdowns from a single source of truth instead of hardcoding team names.
+
+**Acceptance Tests:**
+
+- **Acc Test 1: Teams endpoint returns the valid team list**
+  - Given the API is running and the canonical dataset exists
+  - When I GET `/teams`
+  - Then the response is a list of team names drawn from the canonical dataset
+  - And the list is non-empty, sorted, and free of duplicates
+- **Acc Test 2: Team list is consistent with prediction validation**
+  - Given `/teams` returns a set of team names
+  - When I POST `/predict` with any team from that list
+  - Then the team is accepted (not rejected as unknown)
+- **Acc Test 3: Dashboard populates dropdowns from the endpoint**
+  - Given the Streamlit app is open and the API is reachable
+  - When the app loads
+  - Then the home and away dropdowns are populated from `/teams`
+  - And no team names are hardcoded in the UI
+
+**Definition of Done:**
+
+- `GET /teams` implemented in `src/api/main.py`
+- Team list derived from the canonical dataset (single source of truth shared with `/predict` team validation)
+- Pydantic response model defined; `/docs` shows correct schema
+- Streamlit dashboard (`src/ui/app.py`) reads its dropdown options from `/teams`
+- Unit test verifies the endpoint returns a sorted, de-duplicated, non-empty list: `tests/test_teams_endpoint.py`
