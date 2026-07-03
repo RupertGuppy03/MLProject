@@ -435,7 +435,7 @@ As a developer, I want a single end-to-end integration test so I can catch bugs 
 
 ## FastAPI predict endpoint
 
-**Labels:** Must Have, Sprint 3
+**Labels:** Must Have, Sprint 3 — **DONE**
 
 **User Story:**
 As a user, I want a `/predict` endpoint so the system can return match outcome probabilities and implied odds for selected teams.

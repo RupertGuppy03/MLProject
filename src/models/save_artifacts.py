@@ -5,6 +5,7 @@ from __future__ import annotations
 #   - artifacts/feature_schema.json  <- locked feature contract (columns, dtypes, preprocessing)
 #   - artifacts/feature_importances.json
 #   - artifacts/current_elo.json     <- latest Elo ratings, used to build inference features
+#   - artifacts/last_updated.json    <- freshness dates served by GET /metadata
 #
 # Run:  python -m src.models.save_artifacts
 # This trains on the full leakage-safe feature matrix and overwrites the artifacts above.
@@ -13,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.api.metadata import write_last_updated
 from src.config import ARTIFACTS_DIR
 from src.features.build_features import CANONICAL_PATH, _save_schema, build_features
 from src.features.elo import compute_elo_features, save_state
@@ -67,11 +69,17 @@ def save_final_artifacts(
     elo_path = artifacts_dir / "current_elo.json"
     save_state(state, elo_path, as_of_date=as_of_date)
 
+    # Freshness dates for GET /metadata. data_through_date is the model's as_of_date, so it
+    # always matches the artifacts just written above.
+    last_updated_path = artifacts_dir / "last_updated.json"
+    write_last_updated(data_through_date=as_of_date, path=last_updated_path)
+
     return {
         "chosen_model": model_path,
         "feature_schema": schema_path,
         "feature_importances": importances_path,
         "current_elo": elo_path,
+        "last_updated": last_updated_path,
         "n_rows": int(X.shape[0]),
         "n_features": int(X.shape[1]),
         "as_of_date": as_of_date,
@@ -85,7 +93,13 @@ def main() -> None:
         f"Saved chosen model (tuned RF) on X=({summary['n_rows']}, {summary['n_features']}). "
         f"Artifacts written to {ARTIFACTS_DIR}/:"
     )
-    for key in ("chosen_model", "feature_schema", "feature_importances", "current_elo"):
+    for key in (
+        "chosen_model",
+        "feature_schema",
+        "feature_importances",
+        "current_elo",
+        "last_updated",
+    ):
         print(f"  - {Path(summary[key]).name}")
     print(f"Elo as_of {summary['as_of_date']}.")
 
