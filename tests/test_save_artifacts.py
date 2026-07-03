@@ -24,6 +24,8 @@ class TestSaveArtifacts:
         # The one command regenerates every served artifact, not just the model + schema.
         assert (tmp_path / "current_elo.json").exists()
         assert (tmp_path / "feature_importances.json").exists()
+        # Freshness artifact served by GET /metadata.
+        assert (tmp_path / "last_updated.json").exists()
         assert summary["n_features"] > 0
 
     def test_artifacts_loadable_and_predict(self, tmp_path):
