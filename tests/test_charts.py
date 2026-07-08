@@ -1,5 +1,6 @@
 import altair as alt
 import matplotlib
+import pydeck as pdk
 
 matplotlib.use("Agg")  # headless backend for tests
 
@@ -8,6 +9,7 @@ from src.ui.charts import (  # noqa: E402
     radar_figure,
     rolling_goals_chart,
     shap_chart,
+    stadium_map,
     venue_splits_chart,
 )
 
@@ -63,3 +65,13 @@ class TestCharts:
         for dark in (True, False):
             fig = radar_figure(ctx, "Arsenal FC", "Chelsea FC", dark=dark)
             assert fig is not None
+
+    def test_stadium_map_builds(self):
+        elos = {
+            "Arsenal FC": 1694.0,
+            "Chelsea FC": 1560.0,
+            "Liverpool FC": 1650.0,
+            "Wolverhampton Wanderers FC": 1470.0,
+        }
+        deck = stadium_map(elos, "Arsenal FC", "Chelsea FC")
+        assert isinstance(deck, pdk.Deck)

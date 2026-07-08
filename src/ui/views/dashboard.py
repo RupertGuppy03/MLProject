@@ -12,12 +12,13 @@ from pathlib import Path
 import requests
 import streamlit as st
 
-from src.ui.api_client import get_metadata, get_teams, predict, selection_error
+from src.ui.api_client import get_elos, get_metadata, get_teams, predict, selection_error
 from src.ui.charts import (
     elo_history_chart,
     radar_figure,
     rolling_goals_chart,
     shap_chart,
+    stadium_map,
     venue_splits_chart,
 )
 from src.ui.team_colors import get_team_color
@@ -266,6 +267,23 @@ def _render_result(result: dict, home: str, away: str) -> None:
         st.caption(
             f"Green pushes toward the predicted outcome "
             f"({outcome.replace('_', ' ')}), red away from it."
+        )
+
+    _render_stadium_map(home, away)
+
+
+def _render_stadium_map(home: str, away: str) -> None:
+    """3D map of the league centred on the home stadium; silently skipped if the API is down."""
+    try:
+        elos = get_elos()["elos"]
+    except requests.RequestException:
+        return
+    with st.container(border=True):
+        st.subheader("Where they play — league strength map")
+        st.pydeck_chart(stadium_map(elos, home, away))
+        st.caption(
+            "Bar height = each team's current Elo rating. Your two selected teams are shown in "
+            "their club colours; the rest of the league is greyed out."
         )
 
 

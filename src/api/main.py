@@ -3,6 +3,7 @@
 Exposes the trained model over HTTP:
   - POST /predict  — win/draw/win probabilities + implied odds for a chosen fixture
   - GET  /teams    — selectable teams (source of truth for the dashboard dropdowns)
+  - GET  /elos     — current Elo rating for every current-season team (drives the stadium map)
   - GET  /health   — liveness probe for deployment health checks
   - GET  /metadata — data/artifact freshness dates
 
@@ -20,7 +21,9 @@ from pydantic import BaseModel
 from src.api.explain import top_feature_contributions
 from src.api.inference_features import build_inference_features, get_selectable_teams
 from src.api.match_context import build_match_context
-from src.api.metadata import read_last_updated
+from src.api.metadata import CURRENT_ELO_PATH, _as_of_from_elo, read_last_updated
+from src.config import CURRENT_SEASON_TEAMS
+from src.features.elo import load_state
 from src.models.rf import LABEL_ORDER, load_model, predict_proba
 from src.models.save_artifacts import CHOSEN_MODEL_PATH
 
@@ -38,6 +41,12 @@ _OUTCOME_LABELS = ["home_win", "draw", "away_win"]
 def _get_model():
     """Load the served model once and cache it for the process lifetime."""
     return load_model(CHOSEN_MODEL_PATH)
+
+
+@lru_cache(maxsize=1)
+def _get_elo_state():
+    """Load the current Elo state (all teams) once and cache it for the process lifetime."""
+    return load_state(CURRENT_ELO_PATH)
 
 
 # --- Pydantic request/response models (also drive the /docs schema) ---
@@ -120,6 +129,11 @@ class TeamsResponse(BaseModel):
     teams: list[str]
 
 
+class ElosResponse(BaseModel):
+    as_of_date: str
+    elos: dict[str, float]
+
+
 class HealthResponse(BaseModel):
     status: str
 
@@ -142,6 +156,14 @@ def health() -> HealthResponse:
 def teams() -> TeamsResponse:
     """Sorted roster of the current season — the teams a user can select."""
     return TeamsResponse(teams=get_selectable_teams())
+
+
+@app.get("/elos", response_model=ElosResponse)
+def elos() -> ElosResponse:
+    """Current Elo rating for every current-season team (drives the dashboard stadium map)."""
+    state = _get_elo_state()
+    current = {team: state.ratings[team] for team in CURRENT_SEASON_TEAMS if team in state.ratings}
+    return ElosResponse(as_of_date=_as_of_from_elo(CURRENT_ELO_PATH), elos=current)
 
 
 @app.get("/metadata", response_model=MetadataResponse)

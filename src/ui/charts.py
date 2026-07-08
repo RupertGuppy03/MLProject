@@ -12,7 +12,9 @@ import altair as alt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pydeck as pdk
 
+from src.ui.stadiums import get_stadium
 from src.ui.team_colors import get_team_color
 from src.ui.team_display import display_name
 
@@ -214,3 +216,91 @@ def radar_figure(context: dict, home: str, away: str, dark: bool = True):
         text.set_color(fg)
     fig.tight_layout()
     return fig
+
+
+# --- Stadium map ---
+
+# Elo bar-height tuning: subtract a baseline so bars start near the ground, then a large scale so
+# the ~1400–1700 spread reads as tens of km of height on a country-wide 3D map.
+_ELO_BASELINE = 1350.0
+_ELEVATION_SCALE = 150
+_GREY = [130, 130, 130, 120]  # de-emphasised colour for non-selected clubs
+
+
+def _hex_to_rgb(hex_color: str) -> list[int]:
+    """Convert a '#RRGGBB' brand colour to an [r, g, b] list for pydeck."""
+    h = hex_color.lstrip("#")
+    return [int(h[i : i + 2], 16) for i in (0, 2, 4)]
+
+
+def stadium_map(elos: dict, home: str, away: str) -> pdk.Deck:
+    """3D map of Premier League stadiums as hexagonal bars, height driven by current Elo.
+
+    `elos` is a mapping of canonical team name -> current Elo (from GET /elos). The selected home
+    and away teams are drawn in their brand colours; every other club is greyed out. The view is
+    centred on the home team's stadium.
+    """
+    selected = {home, away}
+    rows = []
+    for team, elo in elos.items():
+        venue = get_stadium(team)
+        if venue is None:  # no coordinates for this club -> skip it
+            continue
+        if team in selected:
+            color = _hex_to_rgb(get_team_color(team)) + [255]
+        else:
+            color = _GREY
+        rows.append(
+            {
+                "team": display_name(team),
+                "stadium": venue["stadium"],
+                "lat": venue["lat"],
+                "lon": venue["lon"],
+                "elo": round(elo),
+                "elevation": max(elo - _ELO_BASELINE, 20.0),
+                "color": color,
+            }
+        )
+    df = pd.DataFrame(rows)
+
+    # Hexagonal columns (disk_resolution=6) so each stadium is one bar at a controlled height.
+    columns = pdk.Layer(
+        "ColumnLayer",
+        data=df,
+        get_position=["lon", "lat"],
+        get_elevation="elevation",
+        elevation_scale=_ELEVATION_SCALE,
+        radius=4000,
+        disk_resolution=6,
+        get_fill_color="color",
+        pickable=True,
+        auto_highlight=True,
+        extruded=True,
+    )
+    # Stadium-name labels sitting at each bar's base.
+    labels = pdk.Layer(
+        "TextLayer",
+        data=df,
+        get_position=["lon", "lat"],
+        get_text="stadium",
+        get_size=12,
+        get_color=[230, 230, 230, 220],
+        get_alignment_baseline="'top'",
+    )
+
+    # Centre on the home stadium; fall back to a Midlands-ish centre if it has no coords.
+    home_venue = get_stadium(home) or {"lat": 52.9, "lon": -1.5}
+    view = pdk.ViewState(
+        latitude=home_venue["lat"],
+        longitude=home_venue["lon"],
+        zoom=5.2,
+        pitch=45,
+        bearing=0,
+    )
+
+    return pdk.Deck(
+        layers=[columns, labels],
+        initial_view_state=view,
+        map_style="dark_no_labels",
+        tooltip={"text": "{team}\n{stadium}\nElo {elo}"},
+    )
