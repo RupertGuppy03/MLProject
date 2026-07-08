@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
+from src.config import CURRENT_SEASON_TEAMS
 
 # Integration tests: they exercise the real served artifacts (chosen_model.pkl) and the
 # canonical dataset, so team names are pulled from /teams rather than hardcoded.
@@ -29,6 +30,18 @@ class TestMetadata:
         body = resp.json()
         assert body["last_updated_date"]
         assert body["data_through_date"]
+
+
+class TestElos:
+    def test_elos_returns_current_season_ratings(self):
+        """GET /elos returns a float Elo for every current-season team plus an as_of_date."""
+        resp = client.get("/elos")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["as_of_date"]
+        elos = body["elos"]
+        assert set(elos) == set(CURRENT_SEASON_TEAMS)
+        assert all(isinstance(v, float) for v in elos.values())
 
 
 class TestPredict:

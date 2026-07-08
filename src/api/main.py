@@ -3,6 +3,7 @@
 Exposes the trained model over HTTP:
   - POST /predict  — win/draw/win probabilities + implied odds for a chosen fixture
   - GET  /teams    — selectable teams (source of truth for the dashboard dropdowns)
+  - GET  /elos     — current Elo rating for every current-season team (drives the stadium map)
   - GET  /health   — liveness probe for deployment health checks
   - GET  /metadata — data/artifact freshness dates
 
@@ -17,8 +18,12 @@ from functools import lru_cache
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from src.api.inference_features import build_inference_features, get_valid_teams
-from src.api.metadata import read_last_updated
+from src.api.explain import top_feature_contributions
+from src.api.inference_features import build_inference_features, get_selectable_teams
+from src.api.match_context import build_match_context
+from src.api.metadata import CURRENT_ELO_PATH, _as_of_from_elo, read_last_updated
+from src.config import CURRENT_SEASON_TEAMS
+from src.features.elo import load_state
 from src.models.rf import LABEL_ORDER, load_model, predict_proba
 from src.models.save_artifacts import CHOSEN_MODEL_PATH
 
@@ -36,6 +41,12 @@ _OUTCOME_LABELS = ["home_win", "draw", "away_win"]
 def _get_model():
     """Load the served model once and cache it for the process lifetime."""
     return load_model(CHOSEN_MODEL_PATH)
+
+
+@lru_cache(maxsize=1)
+def _get_elo_state():
+    """Load the current Elo state (all teams) once and cache it for the process lifetime."""
+    return load_state(CURRENT_ELO_PATH)
 
 
 # --- Pydantic request/response models (also drive the /docs schema) ---
@@ -59,6 +70,50 @@ class ImpliedOdds(BaseModel):
     away: float | None
 
 
+class VenueSplits(BaseModel):
+    home_goals_for: float
+    home_goals_against: float
+    away_goals_for: float
+    away_goals_against: float
+
+
+class TeamContext(BaseModel):
+    team: str
+    current_elo: float
+    elo_trajectory: list[float]
+    form: list[str]
+    rolling_goals_scored: list[float]
+    rolling_goals_conceded: list[float]
+    venue_splits: VenueSplits
+    ppg: float
+    clean_sheets: int
+    league_position: int
+
+
+class HeadToHead(BaseModel):
+    home_wins: int
+    draws: int
+    away_wins: int
+    total: int
+
+
+class MatchContext(BaseModel):
+    as_of_date: str
+    home: TeamContext
+    away: TeamContext
+    head_to_head: HeadToHead
+
+
+class FeatureContribution(BaseModel):
+    feature: str
+    contribution: float
+
+
+class Explanation(BaseModel):
+    predicted_class: str
+    top_features: list[FeatureContribution]
+
+
 class PredictResponse(BaseModel):
     home_team: str
     away_team: str
@@ -66,10 +121,17 @@ class PredictResponse(BaseModel):
     probabilities: Probabilities
     implied_odds: ImpliedOdds
     predicted_outcome: str
+    context: MatchContext
+    explanation: Explanation
 
 
 class TeamsResponse(BaseModel):
     teams: list[str]
+
+
+class ElosResponse(BaseModel):
+    as_of_date: str
+    elos: dict[str, float]
 
 
 class HealthResponse(BaseModel):
@@ -92,8 +154,16 @@ def health() -> HealthResponse:
 
 @app.get("/teams", response_model=TeamsResponse)
 def teams() -> TeamsResponse:
-    """Sorted, de-duplicated list of selectable teams (shared with /predict validation)."""
-    return TeamsResponse(teams=get_valid_teams())
+    """Sorted roster of the current season — the teams a user can select."""
+    return TeamsResponse(teams=get_selectable_teams())
+
+
+@app.get("/elos", response_model=ElosResponse)
+def elos() -> ElosResponse:
+    """Current Elo rating for every current-season team (drives the dashboard stadium map)."""
+    state = _get_elo_state()
+    current = {team: state.ratings[team] for team in CURRENT_SEASON_TEAMS if team in state.ratings}
+    return ElosResponse(as_of_date=_as_of_from_elo(CURRENT_ELO_PATH), elos=current)
 
 
 @app.get("/metadata", response_model=MetadataResponse)
@@ -123,15 +193,27 @@ def predict(request: PredictRequest) -> PredictResponse:
         raise HTTPException(status_code=400, detail=str(exc))
 
     # predict_proba returns [p_home, p_draw, p_away] (reordered from the model's classes_).
-    proba = predict_proba(_get_model(), X)[0]
+    model = _get_model()
+    proba = predict_proba(model, X)[0]
     p_home, p_draw, p_away = (float(p) for p in proba)
 
     # Implied (fair) odds are the reciprocal of each probability; guard against zero.
     def to_odds(p: float) -> float | None:
         return round(1.0 / p, 2) if p > 0 else None
 
-    # Highest-probability outcome, mapped to a human-readable label.
-    predicted_outcome = _OUTCOME_LABELS[max(range(3), key=lambda i: proba[i])]
+    # Highest-probability outcome. LABEL_ORDER (["HW","D","AW"]) is the model-label form of the
+    # same index; _OUTCOME_LABELS is the human-readable form.
+    best = max(range(3), key=lambda i: proba[i])
+    predicted_outcome = _OUTCOME_LABELS[best]
+
+    # Rich match context (real data behind every chart) + per-prediction SHAP on the same X.
+    context = build_match_context(
+        request.home_team, request.away_team, as_of_date=request.as_of_date
+    )
+    explanation = {
+        "predicted_class": predicted_outcome,
+        "top_features": top_feature_contributions(model, X, LABEL_ORDER[best]),
+    }
 
     return PredictResponse(
         home_team=request.home_team,
@@ -142,4 +224,6 @@ def predict(request: PredictRequest) -> PredictResponse:
             home=to_odds(p_home), draw=to_odds(p_draw), away=to_odds(p_away)
         ),
         predicted_outcome=predicted_outcome,
+        context=MatchContext.model_validate(context),
+        explanation=Explanation.model_validate(explanation),
     )

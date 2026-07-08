@@ -26,6 +26,20 @@ def get_teams(base_url: str = API_BASE_URL) -> list[str]:
     return resp.json()["teams"]
 
 
+def get_metadata(base_url: str = API_BASE_URL) -> dict:
+    """Return the data/artifact freshness dates from GET /metadata."""
+    resp = requests.get(f"{base_url}/metadata", timeout=_TIMEOUT)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_elos(base_url: str = API_BASE_URL) -> dict:
+    """Return current Elo ratings for every current-season team from GET /elos."""
+    resp = requests.get(f"{base_url}/elos", timeout=_TIMEOUT)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def predict(
     home_team: str,
     away_team: str,

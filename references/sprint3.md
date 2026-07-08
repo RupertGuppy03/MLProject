@@ -11,9 +11,10 @@
 | FastAPI predict endpoint | Done | `src/api/main.py` |
 | Inference feature builder | Done | `src/api/inference_features.py` |
 | Streamlit dashboard | Done | `src/ui/app.py` |
-| Match context and SHAP explanation panel | To Do | `src/api/explain.py`, `src/api/match_context.py` |
+| Match context and SHAP explanation panel | Done | `src/api/explain.py`, `src/api/match_context.py` |
 | Local network access (CORS + configurable API URL) | To Do | `src/api/main.py`, `src/ui/app.py` |
 | Teams list endpoint | Done | `src/api/main.py`, `src/ui/app.py` |
+| Interactive stadium map for selected fixture | Done | `src/api/main.py`, `src/ui/stadiums.py`, `src/ui/charts.py` |
 
 ---
 
@@ -107,7 +108,7 @@ As a user, I want a Streamlit dashboard so I can select teams and instantly view
 
 ## Match context and SHAP explanation panel
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Should Have, Sprint 3
 
 **User Story:**
@@ -207,3 +208,41 @@ As a user, I want a `/teams` endpoint that returns the list of selectable teams,
 - Pydantic response model defined; `/docs` shows correct schema
 - Streamlit dashboard (`src/ui/app.py`) reads its dropdown options from `/teams`
 - Unit test verifies the endpoint returns a sorted, de-duplicated, non-empty list: `tests/test_teams_endpoint.py`
+
+## Interactive stadium map for selected fixture
+
+**Status:** Done
+**Labels:** Could Have, Sprint 3
+
+**User Story:**
+As a user, when I run a prediction I want an interactive 3D map of the Premier League with each club's stadium marked by a bar, and my two selected teams highlighted, so I get a visually engaging sense of team strength alongside the other charts.
+
+**Acceptance Tests:**
+
+- **Acc Test 1: Map centres on the selected fixture**
+  - Given a user selects a home and away team
+  - When the prediction is run
+  - Then the map automatically centres on the home team's stadium
+  - And the user does not need to manually pan, zoom, or search
+
+- **Acc Test 2: Bar height reflects team strength (Elo)**
+  - Given the selected teams have current Elo ratings
+  - When the map renders
+  - Then each stadium's bar height is proportional to that team's current Elo rating
+
+- **Acc Test 3: Selected pair highlighted, rest greyscale**
+  - Given all 20 clubs in the current season have a stadium location
+  - When the map renders
+  - Then all 20 stadiums appear as bars
+  - And the selected home and away teams are shown in their full club colours
+  - And the other 18 clubs are shown in greyscale for contrast
+
+**Definition of Done:**
+
+- Map renders using an interactive 3D map component (`st.pydeck_chart` with a hexagonal `ColumnLayer`)
+- Map auto-centres on the home team's stadium without manual navigation
+- Bar height driven by real current Elo ratings (served via `GET /elos`)
+- Selected pair in club colour; the other 18 clubs in greyscale
+- Each bar is labelled with its stadium name
+- Stadium coordinates are accurate for all 20 clubs in the current-season roster
+- Map appears in its own bordered card below the SHAP chart, with a caption noting height = Elo

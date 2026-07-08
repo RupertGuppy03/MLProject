@@ -51,11 +51,19 @@ streamlit run src/ui/app.py
 ```
 
 Pick a home and away team, click **Run Prediction**, and you'll get win / draw / win
-probabilities, implied odds, and the predicted outcome.
+probabilities, implied odds, the predicted outcome, and a full explanation panel: recent form,
+Elo trajectory, rolling goals, home/away splits, a team radar, head-to-head, model confidence,
+and per-prediction SHAP contributions. Every chart is served by the API — nothing is hardcoded.
 
 ### Dashboard
 
 ![Match predictor dashboard](docs/screenshots/dashboard.png)
+
+### Explanation panel
+
+Head-to-head record and the top SHAP features driving each prediction:
+
+![Explanation panel](docs/screenshots/explanation.png)
 
 ## Regenerate artifacts
 

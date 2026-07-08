@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from src.config import CURRENT_SEASON_TEAMS
 from src.features.build_features import CANONICAL_PATH, SCHEMA_PATH, build_features
 
 # Sentinel id for the one synthetic fixture we append to the history slice. It is unique,
@@ -37,14 +38,23 @@ def _load_canonical(matches: pd.DataFrame | None = None) -> pd.DataFrame:
 
 
 def get_valid_teams(matches: pd.DataFrame | None = None) -> list[str]:
-    """Sorted, de-duplicated list of every team in the dataset.
+    """Sorted, de-duplicated list of every team present in the historical dataset.
 
-    Single source of truth for team names, shared by `/predict` validation and the
-    `/teams` endpoint so they can never drift apart.
+    Used for prediction validation (any team we have data for). The teams a user can actually
+    select are the current-season roster (`get_selectable_teams`), which is a subset of these.
     """
     df = _load_canonical(matches)
     teams = pd.concat([df["home_team"], df["away_team"]]).dropna().astype(str).unique()
     return sorted(teams)
+
+
+def get_selectable_teams() -> list[str]:
+    """Sorted roster of the current season — the teams a user can pick in the app.
+
+    Source of truth for the `/teams` dropdown. A subset of the historical dataset, so every
+    selectable team is already valid for prediction.
+    """
+    return sorted(CURRENT_SEASON_TEAMS)
 
 
 def _load_schema() -> tuple[list[str], dict[str, str]]:

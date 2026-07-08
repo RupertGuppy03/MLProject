@@ -1,6 +1,6 @@
 # Sprint 4 — Deployment
 
-**Goal:** Deploy a public, device-accessible web app. Streamlit UI hosted publicly, FastAPI model API deployed on AWS using Docker. End result is a public Streamlit URL calling a public AWS API URL reliably.
+**Goal:** Deploy a public, device-accessible web app. Streamlit UI hosted publicly, FastAPI model API deployed on Azure using Docker. End result is a public Streamlit URL calling a public Azure API URL reliably.
 
 ---
 
@@ -9,10 +9,10 @@
 | Story | Status | Key files |
 |---|---|---|
 | Dockerize the FastAPI prediction service | To Do | `src/api/Dockerfile` |
-| Push the API Docker image to AWS ECR | To Do | `.dockerignore`, ECR config |
-| Deploy the API to AWS App Runner | To Do | App Runner config |
+| Push the API Docker image to Azure Container Registry (ACR) | To Do | `.dockerignore`, ACR config |
+| Deploy the API to Azure Container Apps | To Do | Container Apps config |
 | Deploy Streamlit UI on Streamlit Community Cloud | To Do | `src/ui/app.py` |
-| Configure Streamlit to call AWS API via API_BASE_URL | To Do | Streamlit secrets |
+| Configure Streamlit to call Azure API via API_BASE_URL | To Do | Streamlit secrets |
 | Public end-to-end smoke test checklist | To Do | `scripts/smoke_test_public.sh` |
 | Data freshness: scheduled refresh script | To Do | `scripts/refresh_and_retrain.sh` |
 
@@ -24,7 +24,7 @@
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want the FastAPI prediction service containerized so the API runs consistently locally and in AWS.
+As a user, I want the FastAPI prediction service containerized so the API runs consistently locally and in Azure.
 
 **Acceptance Tests:**
 
@@ -54,20 +54,20 @@ As a user, I want the FastAPI prediction service containerized so the API runs c
 
 ---
 
-## Push the API Docker image to AWS ECR
+## Push the API Docker image to Azure Container Registry (ACR)
 
 **Status:** To Do
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want to push the API Docker image to AWS ECR with a minimal image size and lifecycle policy so storage costs stay low and old images don't accumulate.
+As a user, I want to push the API Docker image to Azure Container Registry (ACR) with a minimal image size and automatic cleanup of old images so storage costs stay low and images don't accumulate.
 
 **Acceptance Tests:**
 
-- **Acc Test 1: ECR repository exists**
-  - Given AWS credentials are configured
-  - When I run the ECR setup commands
-  - Then an ECR repository exists
+- **Acc Test 1: ACR registry exists**
+  - Given Azure credentials are configured (`az login`)
+  - When I run the ACR setup commands (`az acr create`)
+  - Then an ACR registry exists
 - **Acc Test 2: Docker image uses a slim base**
   - Given the Dockerfile is implemented
   - When I inspect the FROM statement
@@ -76,58 +76,58 @@ As a user, I want to push the API Docker image to AWS ECR with a minimal image s
   - Given the image is built locally
   - When I check the size
   - Then it is less than 600 MB
-- **Acc Test 4: ECR lifecycle policy applied**
-  - Given the ECR repo is created
-  - When I apply the lifecycle policy
-  - Then only the 3 most recent tagged images are retained and untagged images expire after 1 day
+- **Acc Test 4: Old images are cleaned up**
+  - Given the ACR registry is created (Basic SKU)
+  - When the scheduled `acr purge` task runs
+  - Then untagged manifests older than 1 day are deleted and only the 3 most recent tagged images are kept
 - **Acc Test 5: Image is pushed successfully**
   - Given the image is built and tagged
   - When I push it
-  - Then it appears in ECR with the correct tag
+  - Then it appears in ACR with the correct tag
 
 **Definition of Done:**
 
 - Dockerfile uses `python:3.11-slim`
 - `.dockerignore` excludes: `data/`, `notebooks/`, `reports/`, `.git/`, `tests/`, `__pycache__/`, `*.parquet`
 - Final image size verified under 600 MB
-- ECR lifecycle policy applied: keep 3 most recent tagged, expire untagged after 1 day
-- README includes ECR auth and push steps
+- Image cleanup configured via a scheduled `acr purge` task (works on Basic SKU; native retention policies require Premium): keep 3 most recent tagged, delete untagged older than 1 day
+- README includes ACR auth (`az acr login`) and push steps
 
 ---
 
-## Deploy the API to AWS App Runner
+## Deploy the API to Azure Container Apps
 
 **Status:** To Do
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want to deploy the FastAPI container to AWS App Runner with auto-pause so the API stays publicly accessible at minimal cost when idle.
+As a user, I want to deploy the FastAPI container to Azure Container Apps with scale-to-zero so the API stays publicly accessible at minimal cost when idle.
 
 **Acceptance Tests:**
 
-- **Acc Test 1: App Runner uses minimum instance size**
-  - Given the service is configured
-  - Then instance CPU is 0.25 vCPU and memory is 0.5 GB
-- **Acc Test 2: Auto-pause is enabled**
-  - Given the service is deployed
-  - When no requests are made for 5 minutes
-  - Then the service pauses and the next request responds within 30 seconds
+- **Acc Test 1: Container App uses minimum instance size**
+  - Given the container app is configured
+  - Then instance CPU is 0.25 vCPU and memory is 0.5 Gi
+- **Acc Test 2: Scale-to-zero is enabled**
+  - Given the container app is deployed with min replicas = 0
+  - When no requests are made for ~5 minutes
+  - Then it scales to zero and the next request responds within ~30 seconds (cold start)
 - **Acc Test 3: Public endpoint responds**
-  - Given the service is running
+  - Given the container app is running
   - When I call the public URL `/health`
   - Then it returns 200
 - **Acc Test 4: Predict endpoint works via public URL**
-  - Given the service is running
+  - Given the container app is running
   - When I POST `/predict` with valid teams
   - Then it returns probabilities and implied odds
 
 **Definition of Done:**
 
-- App Runner deployed with 0.25 vCPU and 0.5 GB RAM, auto-pause enabled
-- Service runs uvicorn on port 8080
-- Public HTTPS endpoint documented in README as `API_BASE_URL`
+- Container App deployed with 0.25 vCPU and 0.5 Gi RAM, scale-to-zero (min replicas = 0)
+- External ingress enabled, target port = uvicorn port (8080)
+- Public HTTPS endpoint (the `*.azurecontainerapps.io` FQDN) documented in README as `API_BASE_URL`
 - `/health` and `/predict` work from an off-network device
-- README includes "Cost and cold starts" section: instance size, estimated cost under $2/month, cold-start warning
+- README includes "Cost and cold starts" section: instance size, free monthly grant, estimated cost ~$0–$2/month, cold-start warning
 - Streamlit handles cold starts with a loading spinner
 
 ---
@@ -163,13 +163,13 @@ As a user, I want the Streamlit dashboard deployed on Streamlit Community Cloud 
 
 ---
 
-## Configure Streamlit to call the AWS API via API_BASE_URL
+## Configure Streamlit to call the Azure API via API_BASE_URL
 
 **Status:** To Do
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want Streamlit to use an `API_BASE_URL` environment variable so the UI calls the deployed AWS API without hardcoded URLs.
+As a user, I want Streamlit to use an `API_BASE_URL` environment variable so the UI calls the deployed Azure API without hardcoded URLs.
 
 **Acceptance Tests:**
 
@@ -178,7 +178,7 @@ As a user, I want Streamlit to use an `API_BASE_URL` environment variable so the
   - When the app starts
   - Then it uses that value as the base URL for all API requests
 - **Acc Test 2: Prediction call succeeds end-to-end**
-  - Given Streamlit is deployed and API is on App Runner
+  - Given Streamlit is deployed and the API is on Azure Container Apps
   - When I select valid teams and click Predict
   - Then Streamlit receives a 200 response and displays results
 - **Acc Test 3: Missing API_BASE_URL uses a safe fallback**
