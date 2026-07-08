@@ -18,7 +18,7 @@ TEAM_COLORS: dict[str, str] = {
     "Aston Villa FC": "#670E36",
     "Brentford FC": "#FFB400",
     "Brighton & Hove Albion FC": "#0057B8",
-    "Burnley FC": "#FFF30D",
+    "Burnley FC": "#6C1D45",
     "Chelsea FC": "#034694",
     "Crystal Palace FC": "#1B458F",
     "Everton FC": "#003399",

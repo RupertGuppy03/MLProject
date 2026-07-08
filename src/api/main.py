@@ -18,7 +18,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from src.api.explain import top_feature_contributions
-from src.api.inference_features import build_inference_features, get_valid_teams
+from src.api.inference_features import build_inference_features, get_selectable_teams
 from src.api.match_context import build_match_context
 from src.api.metadata import read_last_updated
 from src.models.rf import LABEL_ORDER, load_model, predict_proba
@@ -140,8 +140,8 @@ def health() -> HealthResponse:
 
 @app.get("/teams", response_model=TeamsResponse)
 def teams() -> TeamsResponse:
-    """Sorted, de-duplicated list of selectable teams (shared with /predict validation)."""
-    return TeamsResponse(teams=get_valid_teams())
+    """Sorted roster of the current season — the teams a user can select."""
+    return TeamsResponse(teams=get_selectable_teams())
 
 
 @app.get("/metadata", response_model=MetadataResponse)
@@ -202,6 +202,6 @@ def predict(request: PredictRequest) -> PredictResponse:
             home=to_odds(p_home), draw=to_odds(p_draw), away=to_odds(p_away)
         ),
         predicted_outcome=predicted_outcome,
-        context=context,
-        explanation=explanation,
+        context=MatchContext.model_validate(context),
+        explanation=Explanation.model_validate(explanation),
     )
