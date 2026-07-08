@@ -12,3 +12,13 @@ dependencies = [
 dev = [
     "ipykernel>=7.0.0",
 ]
+
+# Static-analysis scope. The notebooks/ folder is personal scratch/exploration (see CLAUDE.md),
+# not part of the shipped pipeline, so we exclude it from linting and type-checking — its Ruff
+# style hints and Pylance stub-noise (matplotlib/pandas/sklearn) shouldn't gate the build.
+[tool.ruff]
+extend-exclude = ["notebooks"]
+
+[tool.pyright]
+# `ignore` (not just `exclude`) so diagnostics stay suppressed even when a notebook is open.
+ignore = ["notebooks"]

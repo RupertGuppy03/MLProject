@@ -292,6 +292,6 @@ def _footer() -> None:
     try:
         meta = get_metadata()
         if meta.get("data_through_date"):
-            st.caption(f"Predictions for the 2025/26 season")
+            st.caption("Predictions for the 2025/26 season")
     except requests.RequestException:
         pass

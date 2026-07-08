@@ -14,7 +14,7 @@
 | Match context and SHAP explanation panel | Done | `src/api/explain.py`, `src/api/match_context.py` |
 | Local network access (CORS + configurable API URL) | To Do | `src/api/main.py`, `src/ui/app.py` |
 | Teams list endpoint | Done | `src/api/main.py`, `src/ui/app.py` |
-| Interactive stadium map for selected fixture | To Do | `src/api/main.py`, `src/ui/stadiums.py`, `src/ui/charts.py` |
+| Interactive stadium map for selected fixture | Done | `src/api/main.py`, `src/ui/stadiums.py`, `src/ui/charts.py` |
 
 ---
 
@@ -211,7 +211,7 @@ As a user, I want a `/teams` endpoint that returns the list of selectable teams,
 
 ## Interactive stadium map for selected fixture
 
-**Status:** To Do
+**Status:** Done
 **Labels:** Could Have, Sprint 3
 
 **User Story:**
