@@ -52,18 +52,36 @@ streamlit run src/ui/app.py
 
 Pick a home and away team, click **Run Prediction**, and you'll get win / draw / win
 probabilities, implied odds, the predicted outcome, and a full explanation panel: recent form,
-Elo trajectory, rolling goals, home/away splits, a team radar, head-to-head, model confidence,
-and per-prediction SHAP contributions. Every chart is served by the API — nothing is hardcoded.
+Elo rating history, rolling goals, home/away splits, a team radar, head-to-head, model confidence,
+per-prediction SHAP contributions, and a 3D stadium map. Every chart is served by the API —
+nothing is hardcoded.
 
-### Dashboard
+## Screenshots
 
-![Match predictor dashboard](docs/screenshots/dashboard.png)
+**Pick two teams and run the prediction** — club crests, brand colours, and a swap button:
 
-### Explanation panel
+![Dashboard and team selection](docs/screenshots/dashboard.png)
 
-Head-to-head record and the top SHAP features driving each prediction:
+**Outcome probabilities, implied odds, model confidence, and recent form:**
 
-![Explanation panel](docs/screenshots/explanation.png)
+![Probability cards, confidence, and recent form](docs/screenshots/probabilities.png)
+
+**Elo rating history and rolling goals** (solid = scored, dashed = conceded):
+
+![Elo history and rolling goals charts](docs/screenshots/trends.png)
+
+**Home/away splits, team profile radar, and head-to-head record:**
+
+![Venue splits, radar, and head-to-head](docs/screenshots/profiles.png)
+
+**Why this prediction** — the top SHAP features driving the result (green toward, red away):
+
+![Top SHAP contributors](docs/screenshots/shap.png)
+
+**League strength map** — each stadium as a 3D bar (height = current Elo), the selected pair in
+club colours and the rest of the league greyed out:
+
+![3D stadium strength map](docs/screenshots/stadium_map.png)
 
 ## Regenerate artifacts
 
