@@ -6,7 +6,7 @@ An end-to-end machine learning system that predicts Premier League match outcome
 
 This is a personal portfolio project for my final year of a Computer Science degree, built to demonstrate end-to-end engineering: data pipeline, ML modelling, API, dashboard, and public deployment. The reference UI is in `references/project_UI_example.html`.
 
-Data is pulled from Football-Data.org, processed into a leakage-safe feature matrix, and used to train a Random Forest classifier with calibrated probabilities. It is served via FastAPI and displayed in a Streamlit dashboard, deployed publicly (Streamlit Community Cloud frontend calling a FastAPI backend on AWS App Runner).
+Data is pulled from Football-Data.org, processed into a leakage-safe feature matrix, and used to train a Random Forest classifier with calibrated probabilities. It is served via FastAPI and displayed in a Streamlit dashboard, deployed publicly (Streamlit Community Cloud frontend calling a FastAPI backend on Azure Container Apps).
 
 ---
 
@@ -64,7 +64,7 @@ General rule for where files go: code that builds a feature column lives in `src
 - **Testing:** pytest
 - **API:** FastAPI, uvicorn, Pydantic
 - **UI:** Streamlit
-- **Infra:** Docker, AWS ECR, AWS App Runner, Streamlit Community Cloud
+- **Infra:** Docker, Azure Container Registry (ACR), Azure Container Apps, Streamlit Community Cloud
 - **Data source:** Football-Data.org API
 
 ---
@@ -76,7 +76,7 @@ The project is split into 4 sprints. We work **sprint by sprint, one user story 
 - **Sprint 1 — Data pipelines:** leakage-safe pipeline from raw data to feature matrix. *(Partially done.)*
 - **Sprint 2 — Model training and evaluation:** baselines, Random Forest, walk-forward backtesting, calibration, tuning.
 - **Sprint 3 — Web app:** FastAPI `/predict`, inference features, Streamlit dashboard, SHAP explanations, match context.
-- **Sprint 4 — Deployment:** Dockerise, push to ECR, deploy to App Runner, deploy Streamlit, smoke tests, data refresh.
+- **Sprint 4 — Deployment:** Dockerise, push to ACR, deploy to Azure Container Apps, deploy Streamlit, smoke tests, data refresh.
 
 ### Workflow for each user story
 

@@ -591,7 +591,7 @@ As a user, I want the FastAPI service and Streamlit dashboard reachable from ano
 
 # Sprint 4 — Deployment
 
-**Goal:** Deploy a public, device-accessible web app. Streamlit UI hosted publicly, FastAPI model API deployed on AWS using Docker. End result is a public Streamlit URL calling a public AWS API URL reliably.
+**Goal:** Deploy a public, device-accessible web app. Streamlit UI hosted publicly, FastAPI model API deployed on Azure using Docker. End result is a public Streamlit URL calling a public Azure API URL reliably.
 
 ---
 
@@ -600,7 +600,7 @@ As a user, I want the FastAPI service and Streamlit dashboard reachable from ano
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want the FastAPI prediction service containerized so the API runs consistently locally and in AWS.
+As a user, I want the FastAPI prediction service containerized so the API runs consistently locally and in Azure.
 
 **Acceptance Tests:**
 
@@ -631,19 +631,19 @@ As a user, I want the FastAPI prediction service containerized so the API runs c
 
 ---
 
-## Push the API Docker image to AWS ECR
+## Push the API Docker image to Azure Container Registry (ACR)
 
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want to push the API Docker image to AWS ECR with a minimal image size and lifecycle policy so storage costs stay low and old images don't accumulate.
+As a user, I want to push the API Docker image to Azure Container Registry (ACR) with a minimal image size and automatic cleanup of old images so storage costs stay low and images don't accumulate.
 
 **Acceptance Tests:**
 
-- **Acc Test 1: ECR repository exists**
-  - Given AWS credentials are configured
-  - When I run the ECR setup commands
-  - Then an ECR repository for the API exists
+- **Acc Test 1: ACR registry exists**
+  - Given Azure credentials are configured (`az login`)
+  - When I run the ACR setup commands (`az acr create`)
+  - Then an ACR registry for the API exists
 - **Acc Test 2: Docker image uses a slim base**
   - Given the Dockerfile is implemented
   - When I inspect the FROM statement
@@ -652,61 +652,60 @@ As a user, I want to push the API Docker image to AWS ECR with a minimal image s
   - Given the API Docker image is built
   - When I check the image size
   - Then it is less than 600 MB
-- **Acc Test 4: ECR lifecycle policy is applied**
-  - Given the ECR repository is created
-  - When I apply the lifecycle policy
-  - Then only the 3 most recent tagged images are retained
-  - And untagged images expire after 1 day
+- **Acc Test 4: Old images are cleaned up**
+  - Given the ACR registry is created (Basic SKU)
+  - When the scheduled `acr purge` task runs
+  - Then only the 3 most recent tagged images are kept
+  - And untagged manifests older than 1 day are deleted
 - **Acc Test 5: Image is tagged and pushed**
   - Given the image is built locally
   - When I tag and push it
-  - Then it appears in ECR with the correct tag
+  - Then it appears in ACR with the correct tag
 
 **Definition of Done:**
 
 - Dockerfile uses `python:3.11-slim`
 - `.dockerignore` excludes: `data/`, `notebooks/`, `reports/`, `.git/`, `tests/`, `__pycache__/`, `*.parquet`
 - Final image size verified under 600 MB
-- ECR repo created with lifecycle policy: keep 3 most recent tagged, expire untagged after 1 day
-- README includes ECR auth and push steps
+- Image cleanup configured via a scheduled `acr purge` task (works on Basic SKU; native retention policies require Premium): keep 3 most recent tagged, delete untagged older than 1 day
+- README includes ACR auth (`az acr login`) and push steps
 
 ---
 
-## Deploy the API to AWS App Runner
+## Deploy the API to Azure Container Apps
 
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want to deploy the FastAPI container to AWS App Runner with auto-pause so the API stays publicly accessible at minimal cost when idle.
+As a user, I want to deploy the FastAPI container to Azure Container Apps with scale-to-zero so the API stays publicly accessible at minimal cost when idle.
 
 **Acceptance Tests:**
 
-- **Acc Test 1: App Runner uses minimum instance size**
-  - Given the App Runner service is configured
+- **Acc Test 1: Container App uses minimum instance size**
+  - Given the container app is configured
   - When I inspect the configuration
-  - Then instance CPU is 0.25 vCPU and memory is 0.5 GB
-- **Acc Test 2: Auto-pause is enabled**
-  - Given the service is deployed
-  - When no requests are made for 5 minutes
-  - Then the service enters a paused state
-  - And the next request responds within 30 seconds
+  - Then instance CPU is 0.25 vCPU and memory is 0.5 Gi
+- **Acc Test 2: Scale-to-zero is enabled**
+  - Given the container app is deployed with min replicas = 0
+  - When no requests are made for ~5 minutes
+  - Then it scales to zero
+  - And the next request responds within ~30 seconds (cold start)
 - **Acc Test 3: Public endpoint responds**
-  - Given the service is running
-  - When I call the public App Runner URL `/health`
+  - Given the container app is running
+  - When I call the public URL `/health`
   - Then it returns status code 200
 - **Acc Test 4: Predict endpoint works via public URL**
-  - Given the service is running
+  - Given the container app is running
   - When I POST `/predict` with valid teams
   - Then it returns probabilities and implied odds
 
 **Definition of Done:**
 
-- App Runner service deployed with 0.25 vCPU and 0.5 GB RAM
-- Auto-pause enabled
-- Service runs uvicorn on port 8080
-- Public HTTPS endpoint documented in README as `API_BASE_URL`
+- Container App deployed with 0.25 vCPU and 0.5 Gi RAM, scale-to-zero (min replicas = 0)
+- External ingress enabled, target port = uvicorn port (8080)
+- Public HTTPS endpoint (the `*.azurecontainerapps.io` FQDN) documented in README as `API_BASE_URL`
 - `/health` and `/predict` both work from an off-network device
-- README includes a "Cost and cold starts" section with instance size, estimated cost under $2/month, and cold-start warning
+- README includes a "Cost and cold starts" section with instance size, free monthly grant, estimated cost ~$0–$2/month, and cold-start warning
 - Streamlit handles cold-start delays with a loading spinner
 
 ---
@@ -741,12 +740,12 @@ As a user, I want the Streamlit dashboard deployed on Streamlit Community Cloud 
 
 ---
 
-## Configure Streamlit to call the AWS API via API_BASE_URL
+## Configure Streamlit to call the Azure API via API_BASE_URL
 
 **Labels:** Must Have, Sprint 4
 
 **User Story:**
-As a user, I want Streamlit to use an `API_BASE_URL` environment variable so the UI calls the deployed AWS API without hardcoded URLs.
+As a user, I want Streamlit to use an `API_BASE_URL` environment variable so the UI calls the deployed Azure API without hardcoded URLs.
 
 **Acceptance Tests:**
 
@@ -755,7 +754,7 @@ As a user, I want Streamlit to use an `API_BASE_URL` environment variable so the
   - When the Streamlit app starts
   - Then it uses that value as the base URL for all API requests
 - **Acc Test 2: Prediction call succeeds end-to-end**
-  - Given Streamlit is deployed and API is on App Runner
+  - Given Streamlit is deployed and the API is on Azure Container Apps
   - When I select valid teams and click Predict
   - Then Streamlit receives a 200 response and displays results
 - **Acc Test 3: Missing API_BASE_URL uses a safe fallback**
